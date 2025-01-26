@@ -71,7 +71,7 @@ jobs:
   build:
     docker:
       - image: cimg/openjdk:17.0  # Use a JDK image compatible with your project
-    working_directory: /ecommerce  # Default working directory for the job
+     working_directory: /project/ApiGateway  # Default working directory for the job
     steps:
       - checkout
       - run:
