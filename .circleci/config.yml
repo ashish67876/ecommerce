@@ -71,7 +71,7 @@ jobs:
   build:
     docker:
       - image: cimg/openjdk:19.0.1  # Use a JDK image compatible with your project
-     working_directory: /project/ApiGateway  # Default working directory for the job
+     
     steps:
       - checkout
       - run:
