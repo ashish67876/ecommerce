@@ -1,59 +1,20 @@
+# Use the latest 2.1 version of CircleCI pipeline process engine.
 version: 2.1
 
-executors:
-  maven-executor:
-    docker:
-    - image: circleci/openjdk:17-jdk
-    working_directory: ~/repo
-
 jobs:
-  build:
-    executor: maven-executor
+  build-and-test:
+    docker:
+      - image: cimg/openjdk:19.0.1
     steps:
-    - checkout
-
-    - run:
-        name: Install Maven Dependencies
-        command: mvn dependency:resolve
-
-    - run:
-        name: Run Tests
-        command: mvn test
-
-  package:
-    executor: maven-executor
-    steps:
-    - checkout
-
-    - run:
-        name: Build Spring Boot Application
-        command: mvn package -DskipTests
-
-    - persist_to_workspace:
-        root: .
-        paths:
-        - target
-
-  deploy:
-    executor: maven-executor
-    steps:
-    - attach_workspace:
-        at: ~/repo
-
-    - run:
-        name: Deploy Application
-        command: |
-          echo "Deploying artifact to the staging environment..."
-          # Add your deployment script or command here, such as uploading to a server or container registry.
+      - checkout
+      - run:
+          name: Build
+          command: mvn -B -DskipTests clean package
+      - run:
+          name: Test
+          command: mvn test
 
 workflows:
-  version: 2
-  build_and_deploy:
+  build-and-test:
     jobs:
-    - build
-    - package:
-        requires:
-        - build
-    - deploy:
-        requires:
-        - package
+      - build-and-test
