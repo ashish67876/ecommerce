@@ -71,26 +71,28 @@ jobs:
   build:
     docker:
       - image: cimg/openjdk:17.0  # Use a JDK image compatible with your project
+    working_directory: ~/repo  # Default working directory for the job
     steps:
       - checkout
       - run:
           name: Install Sonar Scanner
           command: |
             curl -sSLo sonar-scanner.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.7.0.2747-linux.zip
-            unzip sonar-scanner.zip -d /usr/local/
-            mv /usr/local/sonar-scanner-4.7.0.2747-linux /usr/local/sonar-scanner
-            export PATH=$PATH:/usr/local/sonar-scanner/bin
+            unzip sonar-scanner.zip -d .
+            mv sonar-scanner-4.7.0.2747-linux sonar-scanner
+            export PATH=$PATH:$PWD/sonar-scanner/bin
       - run:
           name: Build Project
           command: mvn clean install
       - run:
           name: Run SonarCloud Analysis
           command: |
-            /usr/local/sonar-scanner/bin/sonar-scanner \
+            ./sonar-scanner/bin/sonar-scanner \
               -Dsonar.projectKey=$SONAR_PROJECT_KEY \
               -Dsonar.organization=$SONAR_ORGANIZATION \
               -Dsonar.host.url=https://sonarcloud.io \
               -Dsonar.login=$SONAR_TOKEN
+
 
 workflows:
   build-and-test:
