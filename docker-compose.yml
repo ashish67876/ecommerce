@@ -11,7 +11,7 @@ services:
       - v9pre
 
   api-gateway:
-    image: saadahmedscse/vendor-voyage-api-gateway:latest
+    image: ashish233001/api-gateway:v1
     ports:
       - "8080:8080"
     depends_on:
