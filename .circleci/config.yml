@@ -71,7 +71,7 @@ jobs:
   build:
     docker:
       - image: cimg/openjdk:17.0  # Use a JDK image compatible with your project
-    working_directory: ~/repo  # Default working directory for the job
+    working_directory: /ecommerce  # Default working directory for the job
     steps:
       - checkout
       - run:
@@ -83,7 +83,7 @@ jobs:
             export PATH=$PATH:$PWD/sonar-scanner/bin
       - run:
           name: Build Project
-          command: mvn clean install
+          command: cd ApiGateway && mvn clean install
       - run:
           name: Run SonarCloud Analysis
           command: |
