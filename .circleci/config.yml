@@ -3,73 +3,92 @@ version: 2.1
 jobs:
   build-and-test:
     docker:
-      - image: cimg/openjdk:19.0.1
-    working_directory: ~/repo  # Set the working directory to the project root
+    - image: cimg/openjdk:19.0.1
+    working_directory: ~/repo # Set the working directory to the project root
     steps:
-      - checkout
-      - run:
-          name: Delete Test Directories
-          command: |
-            echo "Deleting test directories..."
-            rm -rf ApiGateway/src/test
-            rm -rf AuthService/src/test
-            rm -rf CartService/src/test
-            rm -rf InventoryService/src/test
-            rm -rf OrderService/src/test
-            rm -rf PaymentService/src/test
-            rm -rf ProductService/src/test
-            rm -rf ServiceRegistry/src/test
-            echo "Test directories deleted successfully."
-      - run:
-          name: Build ApiGateway
-          command: cd ApiGateway && mvn -B -DskipTests clean package
-      - run:
-          name: Test
-          command: cd ApiGateway && mvn test
-      - run:
-          name: Build AuthService
-          command: cd AuthService && mvn -B -DskipTests clean package
-      - run:
-          name: Test
-          command: cd AuthService && mvn test
-      - run:
-          name: Build CartService
-          command: cd CartService && mvn -B -DskipTests clean package
-      - run:
-          name: Test
-          command: cd CartService && mvn test
-      - run:
-          name: Build InventoryService
-          command: cd InventoryService && mvn -B -DskipTests clean package
-      - run:
-          name: Test
-          command: cd InventoryService && mvn test
-      - run:
-          name: Build OrderService
-          command: cd OrderService && mvn -B -DskipTests clean package
-      - run:
-          name: Test
-          command: cd OrderService && mvn test
-      - run:
-          name: Build PaymentService
-          command: cd PaymentService && mvn -B -DskipTests clean package
-      - run:
-          name: Test
-          command: cd PaymentService && mvn test
-      - run:
-          name: Build ProductService
-          command: cd ProductService && mvn -B -DskipTests clean package
-      - run:
-          name: Test
-          command: cd ProductService && mvn test
-      - run:
-          name: Build ServiceRegistry
-          command: cd ServiceRegistry && mvn -B -DskipTests clean package
-      - run:
-          name: Test
-          command: cd ServiceRegistry && mvn test
+    - checkout
+    - run:
+        name: Delete Test Directories
+        command: |
+          echo "Deleting test directories..."
+          rm -rf ApiGateway/src/test
+          rm -rf AuthService/src/test
+          rm -rf CartService/src/test
+          rm -rf InventoryService/src/test
+          rm -rf OrderService/src/test
+          rm -rf PaymentService/src/test
+          rm -rf ProductService/src/test
+          rm -rf ServiceRegistry/src/test
+          echo "Test directories deleted successfully."
+    - run:
+        name: Build ApiGateway
+        command: cd ApiGateway && mvn -B -DskipTests clean package
+    - run:
+        name: Test
+        command: cd ApiGateway && mvn test
+    - run:
+        name: Build AuthService
+        command: cd AuthService && mvn -B -DskipTests clean package
+    - run:
+        name: Test
+        command: cd AuthService && mvn test
+    - run:
+        name: Build CartService
+        command: cd CartService && mvn -B -DskipTests clean package
+    - run:
+        name: Test
+        command: cd CartService && mvn test
+    - run:
+        name: Build InventoryService
+        command: cd InventoryService && mvn -B -DskipTests clean package
+    - run:
+        name: Test
+        command: cd InventoryService && mvn test
+    - run:
+        name: Build OrderService
+        command: cd OrderService && mvn -B -DskipTests clean package
+    - run:
+        name: Test
+        command: cd OrderService && mvn test
+    - run:
+        name: Build PaymentService
+        command: cd PaymentService && mvn -B -DskipTests clean package
+    - run:
+        name: Test
+        command: cd PaymentService && mvn test
+    - run:
+        name: Build ProductService
+        command: cd ProductService && mvn -B -DskipTests clean package
+    - run:
+        name: Test
+        command: cd ProductService && mvn test
+    - run:
+        name: Build ServiceRegistry
+        command: cd ServiceRegistry && mvn -B -DskipTests clean package
+    - run:
+        name: Test
+        command: cd ServiceRegistry && mvn test
+  sonarCloud_analysis:
+    docker:
+    - image: cimg/openjdk:19.0.1
+    steps:
+    - checkout
+    - run:
+        name: Install & Run SonarScanner Analysis
+        command: |
+          export SONAR_SCANNER_VERSION=6.2.1.4610
+          export SONAR_SCANNER_HOME=$HOME/.sonar/sonar-scanner-$SONAR_SCANNER_VERSION-linux-x64
+          curl --create-dirs -sSLo $HOME/.sonar/sonar-scanner.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-$SONAR_SCANNER_VERSION-linux-x64.zip
+          unzip -o $HOME/.sonar/sonar-scanner.zip -d $HOME/.sonar/
+          export PATH=$SONAR_SCANNER_HOME/bin:$PATH
+          export SONAR_SCANNER_OPTS="-server"
+          ls $SONAR_SCANNER_HOME/bin #check if sonar-scanner binary is present here
+          sonar-scanner -Dsonar.organization=circlecicd -Dsonar.projectKey=circlecicd_circlecicd01  -Dsonar.sources=. -Dsonar.host.url=https://sonarcloud.io -Dsonar.login=$SONAR_TOKEN
 
 workflows:
   build-and-test:
     jobs:
-      - build-and-test
+    - build-and-test
+    - sonarCloud_analysis:
+        requires:
+        - build-and-test
