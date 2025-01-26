@@ -70,7 +70,7 @@ jobs:
         command: cd ServiceRegistry && mvn test
   build:
     docker:
-      - image: img/openjdk:19.0.1  # Use a JDK image compatible with your project
+      - image: cimg/openjdk:19.0.1  # Use a JDK image compatible with your project
      working_directory: /project/ApiGateway  # Default working directory for the job
     steps:
       - checkout
