@@ -75,7 +75,7 @@ jobs:
       - checkout
       - run:
           name: Analyze on SonarQube Cloud
-          command: mvn verify sonar:sonar -Dsonar.projectKey=ashish67876_ecommerce
+          command: cd ApiGateway && mvn verify sonar:sonar -Dsonar.projectKey=ashish67876_ecommerce
 
 workflows:
   build-and-test:
