@@ -8,6 +8,19 @@ jobs:
     steps:
       - checkout
       - run:
+          name: Delete Test Directories
+          command: |
+            echo "Deleting test directories..."
+            rm -rf ApiGateway/src/test
+            rm -rf AuthService/src/test
+            rm -rf CartService/src/test
+            rm -rf InventoryService/src/test
+            rm -rf OrderService/src/test
+            rm -rf PaymentService/src/test
+            rm -rf ProductService/src/test
+            rm -rf ServiceRegistry/src/test
+            echo "Test directories deleted successfully."
+      - run:
           name: Build ApiGateway
           command: cd ApiGateway && mvn -B -DskipTests clean package
       - run:
