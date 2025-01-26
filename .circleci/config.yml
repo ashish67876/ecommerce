@@ -68,27 +68,18 @@ jobs:
     - run:
         name: Test
         command: cd ServiceRegistry && mvn test
-  sonarCloud_analysis:
+  build:
     docker:
-    - image: cimg/openjdk:19.0.1
+      - image: 'cimg/openjdk:17.0'
     steps:
-    - checkout
-    - run:
-        name: Install & Run SonarScanner Analysis
-        command: |
-          export SONAR_SCANNER_VERSION=6.2.1.4610
-          export SONAR_SCANNER_HOME=$HOME/.sonar/sonar-scanner-$SONAR_SCANNER_VERSION-linux-x64
-          curl --create-dirs -sSLo $HOME/.sonar/sonar-scanner.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-$SONAR_SCANNER_VERSION-linux-x64.zip
-          unzip -o $HOME/.sonar/sonar-scanner.zip -d $HOME/.sonar/
-          export PATH=$SONAR_SCANNER_HOME/bin:$PATH
-          export SONAR_SCANNER_OPTS="-server"
-          ls $SONAR_SCANNER_HOME/bin #check if sonar-scanner binary is present here
-          sonar-scanner -Dsonar.organization=circlecicd -Dsonar.projectKey=circlecicd_circlecicd01  -Dsonar.sources=. -Dsonar.host.url=https://sonarcloud.io -Dsonar.login=$SONAR_TOKEN
+      - checkout
+      - run:
+          name: Analyze on SonarQube Cloud
+          command: mvn verify sonar:sonar -Dsonar.projectKey=ashish67876_ecommerce
 
 workflows:
   build-and-test:
     jobs:
     - build-and-test
-    - sonarCloud_analysis:
-        requires:
-        - build-and-test
+    - build:
+        context: SonarCloud
