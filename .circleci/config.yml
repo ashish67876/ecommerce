@@ -2,7 +2,7 @@ version: 2.1
 
 # Use the SonarCloud orb to simplify analysis integration.
 orbs:
-  sonarcloud: circleci/sonarcloud@1.0.4
+  sonarcloud: sonarsource/sonarcloud@2.0.0
 
 jobs:
   build-and-test:
