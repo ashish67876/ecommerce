@@ -1,105 +1,173 @@
 version: 2.1
 
+# You can optionally include orbs here if you prefer to use an orb for JFrog CLI.
+# For this production configuration, we are installing the JFrog CLI manually.
+
 jobs:
   build-and-test:
     docker:
-    - image: cimg/openjdk:19.0.1
-    working_directory: ~/repo # Set the working directory to the project root
-    steps:
-    - checkout
-    - run:
-        name: Delete Test Directories
-        command: |
-          echo "Deleting test directories..."
-          rm -rf ApiGateway/src/test
-          rm -rf AuthService/src/test
-          rm -rf CartService/src/test
-          rm -rf InventoryService/src/test
-          rm -rf OrderService/src/test
-          rm -rf PaymentService/src/test
-          rm -rf ProductService/src/test
-          rm -rf ServiceRegistry/src/test
-          echo "Test directories deleted successfully."
-    - run:
-        name: Build ApiGateway
-        command: cd ApiGateway && mvn -B -DskipTests clean package
-    - run:
-        name: Test
-        command: cd ApiGateway && mvn test
-    - run:
-        name: Build AuthService
-        command: cd AuthService && mvn -B -DskipTests clean package
-    - run:
-        name: Test
-        command: cd AuthService && mvn test
-    - run:
-        name: Build CartService
-        command: cd CartService && mvn -B -DskipTests clean package
-    - run:
-        name: Test
-        command: cd CartService && mvn test
-    - run:
-        name: Build InventoryService
-        command: cd InventoryService && mvn -B -DskipTests clean package
-    - run:
-        name: Test
-        command: cd InventoryService && mvn test
-    - run:
-        name: Build OrderService
-        command: cd OrderService && mvn -B -DskipTests clean package
-    - run:
-        name: Test
-        command: cd OrderService && mvn test
-    - run:
-        name: Build PaymentService
-        command: cd PaymentService && mvn -B -DskipTests clean package
-    - run:
-        name: Test
-        command: cd PaymentService && mvn test
-    - run:
-        name: Build ProductService
-        command: cd ProductService && mvn -B -DskipTests clean package
-    - run:
-        name: Test
-        command: cd ProductService && mvn test
-    - run:
-        name: Build ServiceRegistry
-        command: cd ServiceRegistry && mvn -B -DskipTests clean package
-    - run:
-        name: Test
-        command: cd ServiceRegistry && mvn test
-  build:
-    docker:
-      - image: cimg/openjdk:17.0-node # Use a JDK image compatible with your project
-     
+      - image: cimg/openjdk:19.0.1
+    working_directory: ~/repo
     steps:
       - checkout
       - run:
-          name: Check Java Version
-          command: java -version
+          name: Delete Test Directories
+          command: |
+            echo "Deleting test directories..."
+            rm -rf ApiGateway/src/test
+            rm -rf AuthService/src/test
+            rm -rf CartService/src/test
+            rm -rf InventoryService/src/test
+            rm -rf OrderService/src/test
+            rm -rf PaymentService/src/test
+            rm -rf ProductService/src/test
+            rm -rf ServiceRegistry/src/test
+            echo "Test directories deleted successfully."
+      - run:
+          name: Build & Package ApiGateway
+          command: |
+            cd ApiGateway && mvn -B -DskipTests clean package
+      - run:
+          name: Test ApiGateway
+          command: |
+            cd ApiGateway && mvn test
+      - run:
+          name: Build & Package AuthService
+          command: |
+            cd AuthService && mvn -B -DskipTests clean package
+      - run:
+          name: Test AuthService
+          command: |
+            cd AuthService && mvn test
+      - run:
+          name: Build & Package CartService
+          command: |
+            cd CartService && mvn -B -DskipTests clean package
+      - run:
+          name: Test CartService
+          command: |
+            cd CartService && mvn test
+      - run:
+          name: Build & Package InventoryService
+          command: |
+            cd InventoryService && mvn -B -DskipTests clean package
+      - run:
+          name: Test InventoryService
+          command: |
+            cd InventoryService && mvn test
+      - run:
+          name: Build & Package OrderService
+          command: |
+            cd OrderService && mvn -B -DskipTests clean package
+      - run:
+          name: Test OrderService
+          command: |
+            cd OrderService && mvn test
+      - run:
+          name: Build & Package PaymentService
+          command: |
+            cd PaymentService && mvn -B -DskipTests clean package
+      - run:
+          name: Test PaymentService
+          command: |
+            cd PaymentService && mvn test
+      - run:
+          name: Build & Package ProductService
+          command: |
+            cd ProductService && mvn -B -DskipTests clean package
+      - run:
+          name: Test ProductService
+          command: |
+            cd ProductService && mvn test
+      - run:
+          name: Build & Package ServiceRegistry
+          command: |
+            cd ServiceRegistry && mvn -B -DskipTests clean package
+      - run:
+          name: Test ServiceRegistry
+          command: |
+            cd ServiceRegistry && mvn test
+      - persist_to_workspace:
+          root: .
+          paths:
+            - ApiGateway/target
+            - AuthService/target
+            - CartService/target
+            - InventoryService/target
+            - OrderService/target
+            - PaymentService/target
+            - ProductService/target
+            - ServiceRegistry/target
+
+  sonar-analysis:
+    docker:
+      - image: cimg/openjdk:17.0-node
+    working_directory: ~/repo
+    steps:
+      - checkout
       - run:
           name: Install Sonar Scanner
           command: |
+            echo "Installing sonar-scanner..."
             curl -sSLo sonar-scanner.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.7.0.2747-linux.zip
             unzip sonar-scanner.zip -d .
-            mv sonar-scanner-4.7.0.2747-linux sonar-scanner
+            mv sonar-scanner-cli-4.7.0.2747-linux sonar-scanner
             export PATH=$PATH:$PWD/sonar-scanner/bin
       - run:
-          name: Build Project
-          command: cd ApiGateway && mvn clean install
-      - run:
-          name: Run SonarCloud Analysis
+          name: Build Project for SonarQube Analysis
           command: |
+            # Example: run the build for one microservice (adjust as necessary)
+            cd ApiGateway && mvn clean install
+      - run:
+          name: Run SonarQube Analysis
+          command: |
+            echo "Running SonarQube Analysis..."
             ./sonar-scanner/bin/sonar-scanner \
-              -Dsonar.projectKey=$SONAR_PROJECT_KEY \
-              -Dsonar.organization=$SONAR_ORGANIZATION \
-              -Dsonar.host.url=https://sonarcloud.io \
-              -Dsonar.login=$SONAR_TOKEN
+              -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
+              -Dsonar.projectName=${SONAR_PROJECT_NAME} \
+              -Dsonar.host.url=${SONAR_HOST_URL} \
+              -Dsonar.login=${SONAR_TOKEN}
 
+  jfrog-upload:
+    docker:
+      - image: cimg/openjdk:19.0.1
+    working_directory: ~/repo
+    steps:
+      - checkout
+      - attach_workspace:
+          at: .
+      - run:
+          name: Install JFrog CLI
+          command: |
+            echo "Installing JFrog CLI..."
+            curl -fL https://getcli.jfrog.io | sh
+            chmod +x jfrog
+            sudo mv jfrog /usr/local/bin/
+      - run:
+          name: Upload Artifacts to JFrog Artifactory
+          command: |
+            echo "Configuring JFrog CLI..."
+            jfrog rt config --url=${JFROG_URL} --user=${JFROG_USER} --password=${JFROG_PASSWORD} --interactive=false
+            echo "Uploading artifacts..."
+            # Adjust artifact paths and target repositories as needed.
+            jfrog rt upload "ApiGateway/target/*.jar" "my-repo/ApiGateway/"
+            jfrog rt upload "AuthService/target/*.jar" "my-repo/AuthService/"
+            jfrog rt upload "CartService/target/*.jar" "my-repo/CartService/"
+            jfrog rt upload "InventoryService/target/*.jar" "my-repo/InventoryService/"
+            jfrog rt upload "OrderService/target/*.jar" "my-repo/OrderService/"
+            jfrog rt upload "PaymentService/target/*.jar" "my-repo/PaymentService/"
+            jfrog rt upload "ProductService/target/*.jar" "my-repo/ProductService/"
+            jfrog rt upload "ServiceRegistry/target/*.jar" "my-repo/ServiceRegistry/"
+            echo "Artifacts uploaded successfully."
 
 workflows:
-  build-and-test:
+  version: 2
+  build_test_sonar_jfrog:
     jobs:
-    - build-and-test
-    - build:
-        context: SonarCloud
+      - build-and-test
+      - sonar-analysis:
+          requires:
+            - build-and-test
+      - jfrog-upload:
+          requires:
+            - build-and-test
