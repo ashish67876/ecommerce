@@ -2,7 +2,7 @@ version: 2.1
 
 # Use the SonarCloud orb to simplify analysis integration.
 orbs:
-  sonarcloud: sonarsource/sonarcloud@2.0.0
+  sonarcloud: trustedshops-public/sonarcloud@3.0.0
 
 jobs:
   build-and-test:
