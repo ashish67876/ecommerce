@@ -1,7 +1,8 @@
 version: 2.1
 
-# You can optionally include orbs here if you prefer to use an orb for JFrog CLI.
-# For this production configuration, we are installing the JFrog CLI manually.
+# Use the SonarCloud orb to simplify analysis integration.
+orbs:
+  sonarcloud: circleci/sonarcloud@1.0.3
 
 jobs:
   build-and-test:
@@ -10,6 +11,7 @@ jobs:
     working_directory: ~/repo
     steps:
       - checkout
+
       - run:
           name: Delete Test Directories
           command: |
@@ -23,6 +25,8 @@ jobs:
             rm -rf ProductService/src/test
             rm -rf ServiceRegistry/src/test
             echo "Test directories deleted successfully."
+
+      # Build and test each microservice sequentially.
       - run:
           name: Build & Package ApiGateway
           command: |
@@ -31,6 +35,7 @@ jobs:
           name: Test ApiGateway
           command: |
             cd ApiGateway && mvn test
+
       - run:
           name: Build & Package AuthService
           command: |
@@ -39,6 +44,7 @@ jobs:
           name: Test AuthService
           command: |
             cd AuthService && mvn test
+
       - run:
           name: Build & Package CartService
           command: |
@@ -47,6 +53,7 @@ jobs:
           name: Test CartService
           command: |
             cd CartService && mvn test
+
       - run:
           name: Build & Package InventoryService
           command: |
@@ -55,6 +62,7 @@ jobs:
           name: Test InventoryService
           command: |
             cd InventoryService && mvn test
+
       - run:
           name: Build & Package OrderService
           command: |
@@ -63,6 +71,7 @@ jobs:
           name: Test OrderService
           command: |
             cd OrderService && mvn test
+
       - run:
           name: Build & Package PaymentService
           command: |
@@ -71,6 +80,7 @@ jobs:
           name: Test PaymentService
           command: |
             cd PaymentService && mvn test
+
       - run:
           name: Build & Package ProductService
           command: |
@@ -79,6 +89,7 @@ jobs:
           name: Test ProductService
           command: |
             cd ProductService && mvn test
+
       - run:
           name: Build & Package ServiceRegistry
           command: |
@@ -87,6 +98,8 @@ jobs:
           name: Test ServiceRegistry
           command: |
             cd ServiceRegistry && mvn test
+
+      # Persist the build artifacts (target folders) for downstream jobs.
       - persist_to_workspace:
           root: .
           paths:
@@ -99,34 +112,21 @@ jobs:
             - ProductService/target
             - ServiceRegistry/target
 
-  sonar-analysis:
+  sonarcloud-analysis:
     docker:
-      - image: cimg/openjdk:17.0-node
+      - image: cimg/openjdk:17.0.1
     working_directory: ~/repo
     steps:
       - checkout
-      - run:
-          name: Install Sonar Scanner
-          command: |
-            echo "Installing sonar-scanner..."
-            curl -sSLo sonar-scanner.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.7.0.2747-linux.zip
-            unzip sonar-scanner.zip -d .
-            mv sonar-scanner-cli-4.7.0.2747-linux sonar-scanner
-            export PATH=$PATH:$PWD/sonar-scanner/bin
-      - run:
-          name: Build Project for SonarQube Analysis
-          command: |
-            # Example: run the build for one microservice (adjust as necessary)
-            cd ApiGateway && mvn clean install
-      - run:
-          name: Run SonarQube Analysis
-          command: |
-            echo "Running SonarQube Analysis..."
-            ./sonar-scanner/bin/sonar-scanner \
-              -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
-              -Dsonar.projectName=${SONAR_PROJECT_NAME} \
-              -Dsonar.host.url=${SONAR_HOST_URL} \
-              -Dsonar.login=${SONAR_TOKEN}
+      - attach_workspace:
+          at: .
+      # Run SonarCloud analysis using the orb.
+      # (This example analyzes the ApiGateway microservice; you can parameterize this for other services.)
+      - sonarcloud/scan:
+          project_base_dir: ApiGateway
+          sonar_project_key: $SONAR_PROJECT_KEY
+          sonar_project_name: $SONAR_PROJECT_NAME
+          sonar_organization: $SONAR_ORGANIZATION
 
   jfrog-upload:
     docker:
@@ -149,7 +149,6 @@ jobs:
             echo "Configuring JFrog CLI..."
             jfrog rt config --url=${JFROG_URL} --user=${JFROG_USER} --password=${JFROG_PASSWORD} --interactive=false
             echo "Uploading artifacts..."
-            # Adjust artifact paths and target repositories as needed.
             jfrog rt upload "ApiGateway/target/*.jar" "my-repo/ApiGateway/"
             jfrog rt upload "AuthService/target/*.jar" "my-repo/AuthService/"
             jfrog rt upload "CartService/target/*.jar" "my-repo/CartService/"
@@ -165,7 +164,7 @@ workflows:
   build_test_sonar_jfrog:
     jobs:
       - build-and-test
-      - sonar-analysis:
+      - sonarcloud-analysis:
           requires:
             - build-and-test
       - jfrog-upload:
