@@ -1,9 +1,5 @@
 version: 2.1
 
-# Use the SonarCloud orb to simplify analysis integration.
-orbs:
-  sonarcloud: trustedshops-public/sonarcloud@3.0.0
-
 jobs:
   build-and-test:
     docker:
@@ -26,7 +22,7 @@ jobs:
             rm -rf ServiceRegistry/src/test
             echo "Test directories deleted successfully."
 
-      # Build and test each microservice sequentially.
+      # Build and test each microservice sequentially
       - run:
           name: Build & Package ApiGateway
           command: |
@@ -99,7 +95,7 @@ jobs:
           command: |
             cd ServiceRegistry && mvn test
 
-      # Persist the build artifacts (target folders) for downstream jobs.
+      # Persist the build artifacts for downstream jobs (adjust paths as needed)
       - persist_to_workspace:
           root: .
           paths:
@@ -120,13 +116,25 @@ jobs:
       - checkout
       - attach_workspace:
           at: .
-      # Run SonarCloud analysis using the orb.
-      # (This example analyzes the ApiGateway microservice; you can parameterize this for other services.)
-      - sonarcloud/scan:
-          project_base_dir: ApiGateway
-          sonar_project_key: $SONAR_PROJECT_KEY
-          sonar_project_name: $SONAR_PROJECT_NAME
-          sonar_organization: $SONAR_ORGANIZATION
+      - run:
+          name: Install Sonar Scanner
+          command: |
+            echo "Installing sonar-scanner..."
+            curl -sSLo sonar-scanner.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.7.0.2747-linux.zip
+            unzip sonar-scanner.zip -d .
+            mv sonar-scanner-cli-4.7.0.2747-linux sonar-scanner
+            export PATH=$PATH:$PWD/sonar-scanner/bin
+      - run:
+          name: Run SonarCloud Analysis for ApiGateway
+          command: |
+            echo "Starting SonarCloud analysis..."
+            sonar-scanner \
+              -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
+              -Dsonar.projectName=${SONAR_PROJECT_NAME} \
+              -Dsonar.organization=${SONAR_ORGANIZATION} \
+              -Dsonar.sources=ApiGateway \
+              -Dsonar.host.url=https://sonarcloud.io \
+              -Dsonar.login=${SONAR_TOKEN}
 
   jfrog-upload:
     docker:
