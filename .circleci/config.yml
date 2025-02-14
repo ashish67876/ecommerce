@@ -57,7 +57,7 @@ jobs:
             - sonar.projectKey=ApiGateway-key
             - sonar.projectName=ApiGateway
             - sonar.organization=YOUR_SONARCLOUD_ORG
-            - sonar.sources=src
+            - sonar.sources=src/main/java
             - sonar.java.binaries=target/classes
 
   jfrog-upload:
