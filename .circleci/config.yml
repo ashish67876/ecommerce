@@ -1,145 +1,212 @@
 version: 2.1
 
+################################################################################
+# ORBS
+################################################################################
 orbs:
-  sonarscanner: psl/sonarscanner@0.0.4
+  # Using SonarCloud orb for demonstration. You can adapt this to self‐hosted SonarQube later.
+  sonarcloud: sonarsource/sonarcloud@1.0.4
 
-jobs:
-  build-and-test:
+################################################################################
+# EXECUTORS
+################################################################################
+executors:
+  custom-executor:
     docker:
-      - image: cimg/openjdk:19.0.1
+      # Replace this with your own custom image that has Java, Maven, etc. pre-installed.
+      - image: dockette/mvn:latest
     working_directory: ~/repo
+
+################################################################################
+# COMMANDS
+################################################################################
+commands:
+  # Reusable command to build & test a single microservice
+  build_and_test_service:
+    parameters:
+      service_name:
+        type: string
     steps:
       - checkout
 
-      - run:
-          name: Delete Test Directories
-          command: |
-            echo "Deleting test directories..."
-            rm -rf ApiGateway/src/test
-            rm -rf AuthService/src/test
-            rm -rf CartService/src/test
-            rm -rf InventoryService/src/test
-            rm -rf OrderService/src/test
-            rm -rf PaymentService/src/test
-            rm -rf ProductService/src/test
-            rm -rf ServiceRegistry/src/test
-            echo "Test directories deleted successfully."
-
-      # Build and test each microservice sequentially
-      - run:
-          name: Build & Package ApiGateway
-          command: |
-            cd ApiGateway && mvn -B -DskipTests clean package
-      - run:
-          name: Test ApiGateway
-          command: |
-            cd ApiGateway && mvn test
+      # Restore Maven cache keyed by the microservice's pom.xml
+      - restore_cache:
+          keys:
+            - maven-deps-{{ checksum "<< parameters.service_name >>/pom.xml" }}
+            - maven-deps-
 
       - run:
-          name: Build & Package AuthService
+          name: Build & Test << parameters.service_name >>
           command: |
-            cd AuthService && mvn -B -DskipTests clean package
-      - run:
-          name: Test AuthService
-          command: |
-            cd AuthService && mvn test
+            cd << parameters.service_name >>
+            # 'mvn clean package' will run tests by default
+            mvn clean package
 
-      - run:
-          name: Build & Package CartService
-          command: |
-            cd CartService && mvn -B -DskipTests clean package
-      - run:
-          name: Test CartService
-          command: |
-            cd CartService && mvn test
+      # Re-save Maven cache after the build
+      - save_cache:
+          key: maven-deps-{{ checksum "<< parameters.service_name >>/pom.xml" }}
+          paths:
+            - ~/.m2
 
-      - run:
-          name: Build & Package InventoryService
-          command: |
-            cd InventoryService && mvn -B -DskipTests clean package
-      - run:
-          name: Test InventoryService
-          command: |
-            cd InventoryService && mvn test
-
-      - run:
-          name: Build & Package OrderService
-          command: |
-            cd OrderService && mvn -B -DskipTests clean package
-      - run:
-          name: Test OrderService
-          command: |
-            cd OrderService && mvn test
-
-      - run:
-          name: Build & Package PaymentService
-          command: |
-            cd PaymentService && mvn -B -DskipTests clean package
-      - run:
-          name: Test PaymentService
-          command: |
-            cd PaymentService && mvn test
-
-      - run:
-          name: Build & Package ProductService
-          command: |
-            cd ProductService && mvn -B -DskipTests clean package
-      - run:
-          name: Test ProductService
-          command: |
-            cd ProductService && mvn test
-
-      - run:
-          name: Build & Package ServiceRegistry
-          command: |
-            cd ServiceRegistry && mvn -B -DskipTests clean package
-      - run:
-          name: Test ServiceRegistry
-          command: |
-            cd ServiceRegistry && mvn test
-
-      # Persist the build artifacts for downstream jobs (adjust paths as needed)
+      # Persist the built artifact(s) for downstream jobs (Sonar, JFrog, etc.)
       - persist_to_workspace:
           root: .
           paths:
-            - ApiGateway/target
-            - AuthService/target
-            - CartService/target
-            - InventoryService/target
-            - OrderService/target
-            - PaymentService/target
-            - ProductService/target
-            - ServiceRegistry/target
+            - << parameters.service_name >>/target
 
-  sonarcloud-analysis:
-    docker:
-      - image: cimg/openjdk:17.0.1
-    working_directory: ~/repo
+  # Reusable command to run SonarCloud analysis on a single microservice
+  sonar_analysis_service:
+    parameters:
+      service_name:
+        type: string
+      project_key:
+        type: string
+        default: ""
+      project_name:
+        type: string
+        default: ""
     steps:
       - checkout
       - attach_workspace:
           at: .
-      - run:
-          name: Install Sonarqube scanner 
-          command: |
-            sudo apt-get update
-            sudo apt-get install -y openjdk-11-jdk
-            wget -O sonar-scanner.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.6.2.2472-linux.zip
-            unzip sonar-scanner.zip
-            rm sonar-scanner.zip
-      - run:
-          name: Run Sonarscanner
-          command: |
-            export PATH="$PATH:$PWD/sonar-scanner-4.6.2.2472-linux/bin"
-            sonar-scanner \
-            -Dsonar.projectKey=$CIRCLE_BRANCH:$CIRCLE_PROJECT_REPONAME \
-            -Dsonar.host.url=https://sonarcloud.io/ \
-            -Dsonar.login=$SONAR_TOKEN 
+      # Use the SonarCloud orb's 'scan' command
+      - sonarcloud/scan:
+          project_base_dir: << parameters.service_name >>
+          sonar_project_key: << parameters.project_key >>
+          sonar_project_name: << parameters.project_name >>
+          # Replace with your actual SonarCloud organization
+          sonar_organization: "YOUR_SONARCLOUD_ORG"
 
+################################################################################
+# JOBS
+################################################################################
+
+# ---------------------------
+#  Build & Test Jobs (Parallel)
+# ---------------------------
+jobs:
+  build-and-test-ApiGateway:
+    executor: custom-executor
+    steps:
+      - build_and_test_service:
+          service_name: ApiGateway
+
+  build-and-test-AuthService:
+    executor: custom-executor
+    steps:
+      - build_and_test_service:
+          service_name: AuthService
+
+  build-and-test-CartService:
+    executor: custom-executor
+    steps:
+      - build_and_test_service:
+          service_name: CartService
+
+  build-and-test-InventoryService:
+    executor: custom-executor
+    steps:
+      - build_and_test_service:
+          service_name: InventoryService
+
+  build-and-test-OrderService:
+    executor: custom-executor
+    steps:
+      - build_and_test_service:
+          service_name: OrderService
+
+  build-and-test-PaymentService:
+    executor: custom-executor
+    steps:
+      - build_and_test_service:
+          service_name: PaymentService
+
+  build-and-test-ProductService:
+    executor: custom-executor
+    steps:
+      - build_and_test_service:
+          service_name: ProductService
+
+  build-and-test-ServiceRegistry:
+    executor: custom-executor
+    steps:
+      - build_and_test_service:
+          service_name: ServiceRegistry
+
+# ---------------------------
+# SonarCloud Analysis Jobs (Parallel)
+# Each depends on its corresponding build job
+# ---------------------------
+  sonar-analysis-ApiGateway:
+    executor: custom-executor
+    steps:
+      - sonar_analysis_service:
+          service_name: ApiGateway
+          project_key: "ApiGateway-key"
+          project_name: "ApiGateway"
+
+  sonar-analysis-AuthService:
+    executor: custom-executor
+    steps:
+      - sonar_analysis_service:
+          service_name: AuthService
+          project_key: "AuthService-key"
+          project_name: "AuthService"
+
+  sonar-analysis-CartService:
+    executor: custom-executor
+    steps:
+      - sonar_analysis_service:
+          service_name: CartService
+          project_key: "CartService-key"
+          project_name: "CartService"
+
+  sonar-analysis-InventoryService:
+    executor: custom-executor
+    steps:
+      - sonar_analysis_service:
+          service_name: InventoryService
+          project_key: "InventoryService-key"
+          project_name: "InventoryService"
+
+  sonar-analysis-OrderService:
+    executor: custom-executor
+    steps:
+      - sonar_analysis_service:
+          service_name: OrderService
+          project_key: "OrderService-key"
+          project_name: "OrderService"
+
+  sonar-analysis-PaymentService:
+    executor: custom-executor
+    steps:
+      - sonar_analysis_service:
+          service_name: PaymentService
+          project_key: "PaymentService-key"
+          project_name: "PaymentService"
+
+  sonar-analysis-ProductService:
+    executor: custom-executor
+    steps:
+      - sonar_analysis_service:
+          service_name: ProductService
+          project_key: "ProductService-key"
+          project_name: "ProductService"
+
+  sonar-analysis-ServiceRegistry:
+    executor: custom-executor
+    steps:
+      - sonar_analysis_service:
+          service_name: ServiceRegistry
+          project_key: "ServiceRegistry-key"
+          project_name: "ServiceRegistry"
+
+# ---------------------------
+# JFrog Upload Job
+# Waits until all Sonar jobs are successful, then uploads artifacts
+# ---------------------------
   jfrog-upload:
-    docker:
-      - image: cimg/openjdk:19.0.1
-    working_directory: ~/repo
+    executor: custom-executor
     steps:
       - checkout
       - attach_workspace:
@@ -152,11 +219,11 @@ jobs:
             chmod +x jfrog
             sudo mv jfrog /usr/local/bin/
       - run:
-          name: Upload Artifacts to JFrog Artifactory
+          name: Configure & Upload
           command: |
-            echo "Configuring JFrog CLI..."
-            jfrog rt config --url=${JFROG_URL} --user=${JFROG_USER} --password=${JFROG_PASSWORD} --interactive=false
+            jfrog rt config --url="${JFROG_URL}" --user="${JFROG_USER}" --password="${JFROG_PASSWORD}" --interactive=false
             echo "Uploading artifacts..."
+            # Upload each microservice's JARs to Artifactory (adjust repo paths as needed)
             jfrog rt upload "ApiGateway/target/*.jar" "my-repo/ApiGateway/"
             jfrog rt upload "AuthService/target/*.jar" "my-repo/AuthService/"
             jfrog rt upload "CartService/target/*.jar" "my-repo/CartService/"
@@ -165,16 +232,59 @@ jobs:
             jfrog rt upload "PaymentService/target/*.jar" "my-repo/PaymentService/"
             jfrog rt upload "ProductService/target/*.jar" "my-repo/ProductService/"
             jfrog rt upload "ServiceRegistry/target/*.jar" "my-repo/ServiceRegistry/"
-            echo "Artifacts uploaded successfully."
+            echo "All artifacts uploaded successfully."
 
+################################################################################
+# WORKFLOW
+################################################################################
 workflows:
   version: 2
   build_test_sonar_jfrog:
     jobs:
-      - build-and-test
-      - sonarcloud-analysis:
+      # 1) Parallel build/test for each microservice
+      - build-and-test-ApiGateway
+      - build-and-test-AuthService
+      - build-and-test-CartService
+      - build-and-test-InventoryService
+      - build-and-test-OrderService
+      - build-and-test-PaymentService
+      - build-and-test-ProductService
+      - build-and-test-ServiceRegistry
+
+      # 2) Parallel Sonar analysis (each depends on its build)
+      - sonar-analysis-ApiGateway:
           requires:
-            - build-and-test
+            - build-and-test-ApiGateway
+      - sonar-analysis-AuthService:
+          requires:
+            - build-and-test-AuthService
+      - sonar-analysis-CartService:
+          requires:
+            - build-and-test-CartService
+      - sonar-analysis-InventoryService:
+          requires:
+            - build-and-test-InventoryService
+      - sonar-analysis-OrderService:
+          requires:
+            - build-and-test-OrderService
+      - sonar-analysis-PaymentService:
+          requires:
+            - build-and-test-PaymentService
+      - sonar-analysis-ProductService:
+          requires:
+            - build-and-test-ProductService
+      - sonar-analysis-ServiceRegistry:
+          requires:
+            - build-and-test-ServiceRegistry
+
+      # 3) Upload to JFrog (depends on all Sonar jobs)
       - jfrog-upload:
           requires:
-            - build-and-test
+            - sonar-analysis-ApiGateway
+            - sonar-analysis-AuthService
+            - sonar-analysis-CartService
+            - sonar-analysis-InventoryService
+            - sonar-analysis-OrderService
+            - sonar-analysis-PaymentService
+            - sonar-analysis-ProductService
+            - sonar-analysis-ServiceRegistry
