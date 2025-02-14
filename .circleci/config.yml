@@ -85,9 +85,9 @@ jobs:
       - run:
           name: Run SonarScanner
           command: |
-              # Force the use of OpenJDK 19
-              export JAVA_HOME=/usr/local/openjdk-19
-              export PATH=$JAVA_HOME/bin:$PATH
+              # Force the usage of the java on the PATH (which should be Java 19)
+              export SONAR_SCANNER_JAVA_CMD=$(which java)
+              echo "Using Java version:"
               java -version  # Confirm the correct Java version is being used
       
               # Add SonarScanner to PATH and run the scanner
