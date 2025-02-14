@@ -1,83 +1,69 @@
 version: 2.1
 
-orbs:
-  sonarscanner: psl/sonarscanner@0.0.4
-
-# Define a list of services as an anchor for reuse
-x-services: &services
-  - ApiGateway
-  - AuthService
-  - CartService
-  - InventoryService
-  - OrderService
-  - PaymentService
-  - ProductService
-  - ServiceRegistry
-
 jobs:
   build-and-test:
     docker:
       - image: cimg/openjdk:19.0.1
+    # Specify the number of parallel containers you want (adjust as needed)
+    parallelism: 4
     working_directory: ~/repo
     steps:
       - checkout
 
-      # Restore Maven cache (adjust the key if you prefer a combined checksum for multiple poms)
+      # Restore Maven cache to speed up subsequent builds
       - restore_cache:
           keys:
             - maven-{{ checksum "pom.xml" }}
             - maven-
 
-      # Delete all test directories using a loop
+      # Build & Test Microservices distributed across parallel nodes
       - run:
-          name: Delete Test Directories
+          name: Build and Test Microservices
           command: |
-            echo "Deleting test directories..."
-            for service in ${*//\n/ } <<EOF
-            $(echo <<SERVICES>> | tr '\n' ' ')
-            EOF
-            do
-              echo "Deleting $service/src/test"
-              rm -rf "$service/src/test"
+            # Define the list of microservices
+            SERVICES=(ApiGateway AuthService CartService InventoryService OrderService PaymentService ProductService ServiceRegistry)
+            echo "Running on node index ${CIRCLE_NODE_INDEX} of ${CIRCLE_NODE_TOTAL}"
+            PROCESSED=""
+            # Distribute services by using modulo arithmetic on the index
+            for i in "${!SERVICES[@]}"; do
+              if (( i % CIRCLE_NODE_TOTAL == CIRCLE_NODE_INDEX )); then
+                service=${SERVICES[i]}
+                echo "Processing service: $service"
+                # Remove test directories if not needed for the build step
+                rm -rf "$service/src/test"
+                cd "$service"
+                echo "Building and packaging $service"
+                mvn -B -DskipTests clean package
+                echo "Running tests for $service"
+                mvn test
+                cd ..
+                PROCESSED="$PROCESSED $service"
+              fi
             done
-            echo "Test directories deleted successfully."
-          # Alternatively, if the above variable expansion seems complex, you can hardcode:
-          # for service in ApiGateway AuthService CartService InventoryService OrderService PaymentService ProductService ServiceRegistry; do
-          #   rm -rf "$service/src/test"
-          # done
+            echo "Services processed on this node: $PROCESSED"
+            # Save the list of processed services for later artifact collection
+            echo "$PROCESSED" > processed_services.txt
 
-      # Build & Test each microservice using a loop
+      # Copy build artifacts from processed services into a node-specific folder
       - run:
-          name: Build & Test All Services
+          name: Persist Artifacts
           command: |
-            for service in ApiGateway AuthService CartService InventoryService OrderService PaymentService ProductService ServiceRegistry; do
-              echo "--------------------------------------------------"
-              echo "Building & Packaging $service"
-              cd "$service"
-              mvn -B -DskipTests clean package
-              echo "Running tests for $service"
-              mvn test
-              cd ..
+            mkdir -p artifacts/${CIRCLE_NODE_INDEX}
+            for service in $(cat processed_services.txt); do
+              if [ -d "$service/target" ]; then
+                cp -r "$service/target" "artifacts/${CIRCLE_NODE_INDEX}/${service}_target"
+              fi
             done
 
-      # Save Maven cache
       - save_cache:
           key: maven-{{ checksum "pom.xml" }}
           paths:
             - ~/.m2
 
-      # Persist build artifacts for downstream jobs
       - persist_to_workspace:
           root: .
           paths:
-            - ApiGateway/target
-            - AuthService/target
-            - CartService/target
-            - InventoryService/target
-            - OrderService/target
-            - PaymentService/target
-            - ProductService/target
-            - ServiceRegistry/target
+            - artifacts
 
   sonarcloud-analysis:
     docker:
@@ -85,13 +71,16 @@ jobs:
     working_directory: ~/repo
     steps:
       - checkout
+      # Attach the merged workspace (which now contains artifacts from all nodes)
       - attach_workspace:
           at: .
-      # Use the SonarScanner orb command (this replaces manual installation)
-      - sonarscanner/scan:
-          project-key: "${CIRCLE_BRANCH}:${CIRCLE_PROJECT_REPONAME}"
-          host-url: "https://sonarcloud.io"
-          login: "${SONAR_TOKEN}"
+      - run:
+          name: Run SonarScanner
+          command: |
+            sonar-scanner \
+              -Dsonar.projectKey=${CIRCLE_BRANCH}:${CIRCLE_PROJECT_REPONAME} \
+              -Dsonar.host.url=https://sonarcloud.io \
+              -Dsonar.login=${SONAR_TOKEN}
 
   jfrog-upload:
     docker:
@@ -109,17 +98,18 @@ jobs:
             chmod +x jfrog
             sudo mv jfrog /usr/local/bin/
       - run:
-          name: Configure JFrog CLI
+          name: Upload Artifacts to JFrog Artifactory
           command: |
-            jfrog rt config --url="${JFROG_URL}" --user="${JFROG_USER}" --password="${JFROG_PASSWORD}" --interactive=false
-      - run:
-          name: Upload Artifacts
-          command: |
-            for service in ApiGateway AuthService CartService InventoryService OrderService PaymentService ProductService ServiceRegistry; do
-              echo "Uploading artifacts for $service"
-              jfrog rt upload "$service/target/*.jar" "my-repo/$service/"
+            for d in artifacts/*; do
+              if [ -d "$d" ]; then
+                for target in "$d"/*; do
+                  # Extract the service name from the folder name
+                  service=$(basename "$target" | sed 's/_target//')
+                  echo "Uploading artifact for service: $service"
+                  jfrog rt upload "$target/*.jar" "my-repo/${service}/"
+                done
+              fi
             done
-            echo "Artifacts uploaded successfully."
 
 workflows:
   version: 2
