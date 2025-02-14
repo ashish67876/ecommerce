@@ -1,6 +1,6 @@
 version: 2.1
-orbs:
-  sonarscanner: psl/sonarscanner@0.0.4
+#orbs:
+#  sonarscanner: psl/sonarscanner@0.0.4
 jobs:
   build-and-test:
     docker:
