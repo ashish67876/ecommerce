@@ -5,7 +5,8 @@ version: 2.1
 ################################################################################
 orbs:
   # Using SonarCloud orb for demonstration. You can adapt this to self‐hosted SonarQube later.
-  sonarcloud: sonarsource/sonarcloud@1.0.4
+  sonarcloud: sonarsource/sonarcloud@2.0.0
+
 
 ################################################################################
 # EXECUTORS
