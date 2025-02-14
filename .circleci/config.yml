@@ -35,7 +35,7 @@ jobs:
             echo "Deleting test directories..."
             for service in ${*//\n/ } <<EOF
             $(echo <<SERVICES>> | tr '\n' ' ')
-EOF
+            EOF
             do
               echo "Deleting $service/src/test"
               rm -rf "$service/src/test"
