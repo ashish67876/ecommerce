@@ -5,7 +5,7 @@ jobs:
     docker:
       - image: cimg/openjdk:19.0.1
     # Specify the number of parallel containers you want (adjust as needed)
-    parallelism: 4
+    parallelism: 8
     working_directory: ~/repo
     steps:
       - checkout
