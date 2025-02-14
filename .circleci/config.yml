@@ -52,13 +52,13 @@ jobs:
           name: List build artifacts
           command: ls -l ApiGateway/target
       - sonarcloud/scan:
-          path: ApiGateway
-          sonar_properties:
-            - sonar.projectKey=ApiGateway-key
-            - sonar.projectName=ApiGateway
-            - sonar.organization=YOUR_SONARCLOUD_ORG
-            - sonar.sources=src/main/java
-            - sonar.java.binaries=target/classes
+          directory: "ApiGateway"
+          extra_properties: |
+            sonar.projectKey=ApiGateway-key
+            sonar.projectName=ApiGateway
+            sonar.organization=YOUR_SONARCLOUD_ORG
+            sonar.sources=src
+            sonar.java.binaries=target/classes
 
   jfrog-upload:
     executor: custom-executor
