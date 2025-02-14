@@ -86,7 +86,6 @@ jobs:
           name: Run SonarScanner
           command: |
             echo "Available Java versions:"
-            update-java-alternatives --list || ls /usr/lib/jvm
             echo "Java version in PATH:"
             java -version
             echo "Java home:"
