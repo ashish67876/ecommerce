@@ -117,7 +117,8 @@ jobs:
       - attach_workspace:
           at: .
       - run:
-          name: Install Sonar Scanner
+          name: Install Sonarqube scanner 
+          command: |
             sudo apt-get update
             sudo apt-get install -y openjdk-17-jdk
             wget -O sonar-scanner.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.6.2.2472-linux.zip
