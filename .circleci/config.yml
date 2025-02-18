@@ -12,12 +12,6 @@ jobs:
     steps:
       - checkout
 
-      # Restore Maven cache to speed up subsequent builds
-      - restore_cache:
-          keys:
-            - maven-{{ checksum "pom.xml" }}
-            - maven-
-
       # Build & Test Microservices distributed across parallel nodes
       - run:
           name: Build and Test Microservices
@@ -61,11 +55,6 @@ jobs:
                 cp -r "$service/target" "artifacts/${CIRCLE_NODE_INDEX}/${service}_target"
               fi
             done
-
-      - save_cache:
-          key: maven-{{ checksum "pom.xml" }}
-          paths:
-            - ~/.m2
 
       - persist_to_workspace:
           root: .
