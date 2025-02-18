@@ -1,179 +1,41 @@
 version: 2.1
 
-# ----------------------------------------
-# JOB: Build and Test Microservices
-# ----------------------------------------
 jobs:
-  build-and-test:
-    docker:
-      - image: cimg/openjdk:19.0.1
-    parallelism: 8
-    working_directory: ~/repo
-    steps:
-      - checkout
-
-      # Build & Test Microservices distributed across parallel nodes
-      - run:
-          name: Build and Test Microservices
-          command: |
-            # List of microservices
-            SERVICES=(ApiGateway AuthService CartService InventoryService OrderService PaymentService ProductService ServiceRegistry)
-
-            echo "Running on node index ${CIRCLE_NODE_INDEX} of ${CIRCLE_NODE_TOTAL}"
-            PROCESSED=""
-
-            # Distribute services by using modulo arithmetic on the index
-            for i in "${!SERVICES[@]}"; do
-              if (( i % CIRCLE_NODE_TOTAL == CIRCLE_NODE_INDEX )); then
-                service=${SERVICES[i]}
-                echo "Processing service: $service"
-
-                # (Optional) Remove test directories if needed
-                # rm -rf "$service/src/test"
-
-                cd "$service"
-                echo "Building and packaging $service"
-                mvn -B -DskipTests clean package
-                echo "Running tests for $service"
-                mvn test
-                cd ..
-                PROCESSED="$PROCESSED $service"
-              fi
-            done
-
-            echo "Services processed on this node: $PROCESSED"
-            # Save the list of processed services for later artifact collection
-            echo "$PROCESSED" > processed_services.txt
-
-      # Copy build artifacts from processed services into a node-specific folder
-      - run:
-          name: Persist Artifacts
-          command: |
-            mkdir -p artifacts/${CIRCLE_NODE_INDEX}
-            for service in $(cat processed_services.txt); do
-              if [ -d "$service/target" ]; then
-                cp -r "$service/target" "artifacts/${CIRCLE_NODE_INDEX}/${service}_target"
-              fi
-            done
-
-      - persist_to_workspace:
-          root: .
-          paths:
-            - artifacts
-
-# ----------------------------------------
-# JOB: Upload to JFrog Artifactory
-# ----------------------------------------
-  jfrog-upload:
+  build-and-package:
     docker:
       - image: cimg/openjdk:19.0.1
     working_directory: ~/repo
     steps:
+      # 1) Clone (checkout) the repository
       - checkout
-      - attach_workspace:
-          at: .
-      - run:
-          name: Install JFrog CLI
-          command: |
-            echo "Installing JFrog CLI..."
-            curl -fL https://getcli.jfrog.io | sh
-            chmod +x jfrog
-            sudo mv jfrog /usr/local/bin/
-      - run:
-          name: Upload Artifacts to JFrog Artifactory
-          command: |
-            # Configure JFrog CLI (assumes env vars JFROG_URL, JFROG_USER, JFROG_PASSWORD are set)
-            jfrog rt config --url="${JFROG_URL}" --user="${JFROG_USER}" --password="${JFROG_PASSWORD}" --interactive=false
 
-            # Loop over artifacts and upload them
-            for d in artifacts/*; do
-              if [ -d "$d" ]; then
-                for target in "$d"/*; do
-                  service=$(basename "$target" | sed 's/_target//')
-                  echo "Uploading artifact for service: $service"
-                  jfrog rt upload "$target/*.jar" "my-repo/${service}/"
-                done
-              fi
+      # 2) Delete the test directories in each microservice
+      - run:
+          name: Delete test directories
+          command: |
+            echo "Deleting test directories..."
+            for service in ApiGateway AuthService CartService InventoryService OrderService PaymentService ProductService ServiceRegistry; do
+              rm -rf "$service/src/test"
+              echo "Deleted test directory for $service"
             done
+            echo "All test directories deleted."
 
-# ----------------------------------------
-# JOB: Deploy to Dev
-# ----------------------------------------
-  deploy-dev:
-    docker:
-      - image: cimg/base:stable
-    working_directory: ~/repo
-    steps:
-      - checkout
+      # 3) Clean & Package each microservice
       - run:
-          name: Deploy to Dev
+          name: Build (clean & package) each microservice
           command: |
-            echo "Deploying microservices to Dev environment..."
-            # Example: Using Helm/Kubectl/CLI commands
-            # This is a placeholder - adapt to your environment
-            # E.g., helm upgrade --install ...
-            # or kubectl apply ...
-            # or AWS ECS CLI ...
-            echo "Deployment to Dev successful."
+            echo "Starting 'mvn clean package' for each microservice..."
+            for service in ApiGateway AuthService CartService InventoryService OrderService PaymentService ProductService ServiceRegistry; do
+              echo "-----------------------------------"
+              echo "Building $service"
+              cd "$service"
+              mvn -B -DskipTests clean package
+              cd ..
+            done
+            echo "All microservices have been packaged successfully."
 
-# ----------------------------------------
-# JOB: Deploy to Staging
-# ----------------------------------------
-  deploy-staging:
-    docker:
-      - image: cimg/base:stable
-    working_directory: ~/repo
-    steps:
-      - checkout
-      - run:
-          name: Deploy to Staging
-          command: |
-            echo "Deploying microservices to Staging environment..."
-            # Placeholder for real commands
-            echo "Deployment to Staging successful."
-
-# ----------------------------------------
-# JOB: Deploy to Production
-# ----------------------------------------
-  deploy-production:
-    docker:
-      - image: cimg/base:stable
-    working_directory: ~/repo
-    steps:
-      - checkout
-      - run:
-          name: Deploy to Production
-          command: |
-            echo "Deploying microservices to Production environment..."
-            # Placeholder for real commands
-            echo "Deployment to Production successful."
-
-# ----------------------------------------
-# WORKFLOW
-# ----------------------------------------
 workflows:
   version: 2
-  build_test_deploy_pipeline:
+  build_pipeline:
     jobs:
-      # 1) Build & Test
-      - build-and-test
-
-      # 2) Upload to Artifactory (requires build)
-      - jfrog-upload:
-          requires:
-            - build-and-test
-
-      # 3) Deploy to Dev (requires successful JFrog upload)
-      - deploy-dev:
-          requires:
-            - jfrog-upload
-
-      # 4) Deploy to Staging (requires Dev)
-      - deploy-staging:
-          requires:
-            - deploy-dev
-
-      # 5) Deploy to Production (requires Staging)
-      - deploy-production:
-          requires:
-            - deploy-staging
+      - build-and-package
