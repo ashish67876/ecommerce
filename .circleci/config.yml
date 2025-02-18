@@ -5,34 +5,34 @@ jobs:
     docker:
       - image: cimg/openjdk:19.0.1
     working_directory: ~/repo
+    # This tells CircleCI to run this job in parallel (4 containers in this example).
+    parallelism: 4
     steps:
-      # 1) Clone (checkout) the repository
+      # 1) Check out your code
       - checkout
 
-      # 2) Delete the test directories in each microservice
+      # 2) Delete test directories and build each microservice assigned to this container
       - run:
-          name: Delete test directories
+          name: Delete tests & Build Microservices in Parallel
           command: |
-            echo "Deleting test directories..."
-            for service in ApiGateway AuthService CartService InventoryService OrderService PaymentService ProductService ServiceRegistry; do
-              rm -rf "$service/src/test"
-              echo "Deleted test directory for $service"
-            done
-            echo "All test directories deleted."
+            # Define all microservices here
+            SERVICES=(ApiGateway AuthService CartService InventoryService OrderService PaymentService ProductService ServiceRegistry)
 
-      # 3) Clean & Package each microservice
-      - run:
-          name: Build (clean & package) each microservice
-          command: |
-            echo "Starting 'mvn clean package' for each microservice..."
-            for service in ApiGateway AuthService CartService InventoryService OrderService PaymentService ProductService ServiceRegistry; do
-              echo "-----------------------------------"
-              echo "Building $service"
-              cd "$service"
-              mvn -B -DskipTests clean package
-              cd ..
+            echo "Running on node index ${CIRCLE_NODE_INDEX} of ${CIRCLE_NODE_TOTAL}"
+            for i in "${!SERVICES[@]}"; do
+              # Use modulo arithmetic to distribute services across parallel containers
+              if (( i % CIRCLE_NODE_TOTAL == CIRCLE_NODE_INDEX )); then
+                service=${SERVICES[i]}
+                echo "-----------------------------------"
+                echo "Processing service: $service"
+                # Remove test directories if needed
+                rm -rf "$service/src/test"
+                # Build & Package the service
+                cd "$service"
+                mvn -B -DskipTests clean package
+                cd ..
+              fi
             done
-            echo "All microservices have been packaged successfully."
 
 workflows:
   version: 2
