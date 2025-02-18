@@ -1,11 +1,12 @@
 version: 2.1
-#orbs:
-#  sonarscanner: psl/sonarscanner@0.0.4
+
+# ----------------------------------------
+# JOB: Build and Test Microservices
+# ----------------------------------------
 jobs:
   build-and-test:
     docker:
       - image: cimg/openjdk:19.0.1
-    # Specify the number of parallel containers you want (adjust as needed)
     parallelism: 8
     working_directory: ~/repo
     steps:
@@ -21,17 +22,21 @@ jobs:
       - run:
           name: Build and Test Microservices
           command: |
-            # Define the list of microservices
+            # List of microservices
             SERVICES=(ApiGateway AuthService CartService InventoryService OrderService PaymentService ProductService ServiceRegistry)
+
             echo "Running on node index ${CIRCLE_NODE_INDEX} of ${CIRCLE_NODE_TOTAL}"
             PROCESSED=""
+
             # Distribute services by using modulo arithmetic on the index
             for i in "${!SERVICES[@]}"; do
               if (( i % CIRCLE_NODE_TOTAL == CIRCLE_NODE_INDEX )); then
                 service=${SERVICES[i]}
                 echo "Processing service: $service"
-                # Remove test directories if not needed for the build step
-                rm -rf "$service/src/test"
+
+                # (Optional) Remove test directories if needed
+                # rm -rf "$service/src/test"
+
                 cd "$service"
                 echo "Building and packaging $service"
                 mvn -B -DskipTests clean package
@@ -41,6 +46,7 @@ jobs:
                 PROCESSED="$PROCESSED $service"
               fi
             done
+
             echo "Services processed on this node: $PROCESSED"
             # Save the list of processed services for later artifact collection
             echo "$PROCESSED" > processed_services.txt
@@ -66,39 +72,9 @@ jobs:
           paths:
             - artifacts
 
-  sonarcloud-analysis:
-    docker:
-      - image: cimg/openjdk:19.0.1
-    working_directory: ~/repo
-    steps:
-      - checkout
-      # Attach the merged workspace (which now contains artifacts from all nodes)
-      - attach_workspace:
-          at: .
-      - run:
-          name: Install Sonarqube scanner 
-          command: |
-            sudo apt-get update
-            wget -O sonar-scanner.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.6.2.2472-linux.zip
-            unzip sonar-scanner.zip
-            rm sonar-scanner.zip
-      - run:
-          name: Run SonarScanner
-          command: |
-            echo "Available Java versions:"
-            echo "Java version in PATH:"
-            java -version
-            echo "Java home:"
-            echo $JAVA_HOME
-            export SONAR_SCANNER_JAVA_CMD="$JAVA_HOME/bin/java"
-      
-              # Add SonarScanner to PATH and run the scanner
-              export PATH="$PATH:$PWD/sonar-scanner-4.6.2.2472-linux/bin"
-              sonar-scanner \
-                -Dsonar.projectKey=$CIRCLE_BRANCH:$CIRCLE_PROJECT_REPONAME \
-                -Dsonar.host.url=https://sonarcloud.io/ \
-                -Dsonar.login=$SONAR_TOKEN
-
+# ----------------------------------------
+# JOB: Upload to JFrog Artifactory
+# ----------------------------------------
   jfrog-upload:
     docker:
       - image: cimg/openjdk:19.0.1
@@ -117,10 +93,13 @@ jobs:
       - run:
           name: Upload Artifacts to JFrog Artifactory
           command: |
+            # Configure JFrog CLI (assumes env vars JFROG_URL, JFROG_USER, JFROG_PASSWORD are set)
+            jfrog rt config --url="${JFROG_URL}" --user="${JFROG_USER}" --password="${JFROG_PASSWORD}" --interactive=false
+
+            # Loop over artifacts and upload them
             for d in artifacts/*; do
               if [ -d "$d" ]; then
                 for target in "$d"/*; do
-                  # Extract the service name from the folder name
                   service=$(basename "$target" | sed 's/_target//')
                   echo "Uploading artifact for service: $service"
                   jfrog rt upload "$target/*.jar" "my-repo/${service}/"
@@ -128,14 +107,84 @@ jobs:
               fi
             done
 
+# ----------------------------------------
+# JOB: Deploy to Dev
+# ----------------------------------------
+  deploy-dev:
+    docker:
+      - image: cimg/base:stable
+    working_directory: ~/repo
+    steps:
+      - checkout
+      - run:
+          name: Deploy to Dev
+          command: |
+            echo "Deploying microservices to Dev environment..."
+            # Example: Using Helm/Kubectl/CLI commands
+            # This is a placeholder - adapt to your environment
+            # E.g., helm upgrade --install ...
+            # or kubectl apply ...
+            # or AWS ECS CLI ...
+            echo "Deployment to Dev successful."
+
+# ----------------------------------------
+# JOB: Deploy to Staging
+# ----------------------------------------
+  deploy-staging:
+    docker:
+      - image: cimg/base:stable
+    working_directory: ~/repo
+    steps:
+      - checkout
+      - run:
+          name: Deploy to Staging
+          command: |
+            echo "Deploying microservices to Staging environment..."
+            # Placeholder for real commands
+            echo "Deployment to Staging successful."
+
+# ----------------------------------------
+# JOB: Deploy to Production
+# ----------------------------------------
+  deploy-production:
+    docker:
+      - image: cimg/base:stable
+    working_directory: ~/repo
+    steps:
+      - checkout
+      - run:
+          name: Deploy to Production
+          command: |
+            echo "Deploying microservices to Production environment..."
+            # Placeholder for real commands
+            echo "Deployment to Production successful."
+
+# ----------------------------------------
+# WORKFLOW
+# ----------------------------------------
 workflows:
   version: 2
-  build_test_sonar_jfrog:
+  build_test_deploy_pipeline:
     jobs:
+      # 1) Build & Test
       - build-and-test
-      - sonarcloud-analysis:
-          requires:
-            - build-and-test
+
+      # 2) Upload to Artifactory (requires build)
       - jfrog-upload:
           requires:
             - build-and-test
+
+      # 3) Deploy to Dev (requires successful JFrog upload)
+      - deploy-dev:
+          requires:
+            - jfrog-upload
+
+      # 4) Deploy to Staging (requires Dev)
+      - deploy-staging:
+          requires:
+            - deploy-dev
+
+      # 5) Deploy to Production (requires Staging)
+      - deploy-production:
+          requires:
+            - deploy-staging
