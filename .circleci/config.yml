@@ -1,6 +1,5 @@
 version: 2.1
 
-# Define reusable commands and executors
 executors:
   java-executor:
     docker:
@@ -14,6 +13,16 @@ commands:
   setup:
     steps:
       - checkout
+      - run:
+          name: Find pom.xml directory
+          command: |
+            POM_PATH=$(find . -name pom.xml | head -1)
+            if [ -z "$POM_PATH" ]; then
+              echo "No pom.xml found!"
+              exit 1
+            fi
+            DIR_PATH=$(dirname "$POM_PATH")
+            cd "$DIR_PATH"
       - restore_cache:
           keys:
             - maven-dependencies-{{ checksum "pom.xml" }}
@@ -44,11 +53,11 @@ jobs:
           destination: ecommerce.jar
 workflows:
   version: 2
-  build-test-deploy:
+  build-test deploy:
     jobs:
       - build-and-test:
           filters:
             branches:
-              only: 
+              only:
                 - main
                 - develop
