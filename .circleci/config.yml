@@ -1,41 +1,54 @@
 version: 2.1
 
-jobs:
-  build-and-package:
+# Define reusable commands and executors
+executors:
+  java-executor:
     docker:
-      - image: cimg/openjdk:19.0.1
-    working_directory: ~/repo
-    # This tells CircleCI to run this job in parallel (4 containers in this example).
-    parallelism: 4
+      - image: cimg/openjdk:17.0
+    resource_class: medium
+    environment:
+      JVM_OPTS: "-Xmx3200m"
+      TERM: dumb
+
+commands:
+  setup:
     steps:
-      # 1) Check out your code
       - checkout
-
-      # 2) Delete test directories and build each microservice assigned to this container
+      - restore_cache:
+          keys:
+            - maven-dependencies-{{ checksum "pom.xml" }}
+            - maven-dependencies-
       - run:
-          name: Delete tests & Build Microservices in Parallel
-          command: |
-            # Define all microservices here
-            SERVICES=(ApiGateway AuthService CartService InventoryService OrderService PaymentService ProductService ServiceRegistry)
+          name: Install Dependencies
+          command: mvn dependency:resolve
+      - save_cache:
+          paths:
+            - ~/.m2
+          key: maven-dependencies-{{ checksum "pom.xml" }}
 
-            echo "Running on node index ${CIRCLE_NODE_INDEX} of ${CIRCLE_NODE_TOTAL}"
-            for i in "${!SERVICES[@]}"; do
-              # Use modulo arithmetic to distribute services across parallel containers
-              if (( i % CIRCLE_NODE_TOTAL == CIRCLE_NODE_INDEX )); then
-                service=${SERVICES[i]}
-                echo "-----------------------------------"
-                echo "Processing service: $service"
-                # Remove test directories if needed
-                rm -rf "$service/src/test"
-                # Build & Package the service
-                cd "$service"
-                mvn -B -DskipTests clean package
-                cd ..
-              fi
-            done
-
+jobs:
+  build-and-test:
+    executor: java-executor
+    steps:
+      - setup
+      - run:
+          name: Build Application
+          command: mvn clean package -DskipTests
+      - run:
+          name: Run Tests
+          command: mvn test
+      - store_test_results:
+          path: target/surefire-reports
+      - store_artifacts:
+          path: target/ecommerce-0.0.1-SNAPSHOT.jar
+          destination: ecommerce.jar
 workflows:
   version: 2
-  build_pipeline:
+  build-test-deploy:
     jobs:
-      - build-and-package
+      - build-and-test:
+          filters:
+            branches:
+              only: 
+                - main
+                - develop
