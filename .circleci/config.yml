@@ -23,7 +23,7 @@ jobs:
           key: maven-{{ checksum "pom.xml" }}-ApiGateway
       # Setup remote Docker to build the image
       - setup_remote_docker:
-          version: 20.10.7
+          version: default
       - run:
           name: "Build Docker image for ApiGateway"
           command: |
@@ -51,7 +51,7 @@ jobs:
             - ~/.m2
           key: maven-{{ checksum "pom.xml" }}-AuthService
       - setup_remote_docker:
-          version: 20.10.7
+          version: default
       - run:
           name: "Build Docker image for AuthService"
           command: |
@@ -79,7 +79,7 @@ jobs:
             - ~/.m2
           key: maven-{{ checksum "pom.xml" }}-CartService
       - setup_remote_docker:
-          version: 20.10.7
+          version: default
       - run:
           name: "Build Docker image for CartService"
           command: |
@@ -107,7 +107,7 @@ jobs:
             - ~/.m2
           key: maven-{{ checksum "pom.xml" }}-InventoryService
       - setup_remote_docker:
-          version: 20.10.7
+          version: default
       - run:
           name: "Build Docker image for InventoryService"
           command: |
@@ -135,7 +135,7 @@ jobs:
             - ~/.m2
           key: maven-{{ checksum "pom.xml" }}-OrderService
       - setup_remote_docker:
-          version: 20.10.7
+          version: default
       - run:
           name: "Build Docker image for OrderService"
           command: |
@@ -163,7 +163,7 @@ jobs:
             - ~/.m2
           key: maven-{{ checksum "pom.xml" }}-PaymentService
       - setup_remote_docker:
-          version: 20.10.7
+          version: default
       - run:
           name: "Build Docker image for PaymentService"
           command: |
@@ -191,7 +191,7 @@ jobs:
             - ~/.m2
           key: maven-{{ checksum "pom.xml" }}-ProductService
       - setup_remote_docker:
-          version: 20.10.7
+          version: default
       - run:
           name: "Build Docker image for ProductService"
           command: |
@@ -219,7 +219,7 @@ jobs:
             - ~/.m2
           key: maven-{{ checksum "pom.xml" }}-ServiceRegistry
       - setup_remote_docker:
-          version: 20.10.7
+          version: default
       - run:
           name: "Build Docker image for ServiceRegistry"
           command: |
