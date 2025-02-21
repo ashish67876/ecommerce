@@ -86,6 +86,80 @@ jobs:
     steps:
       - compile-service:
           service: ServiceRegistry
+commands:
+  build-docker-image:
+    parameters:
+      service:
+        type: string
+    steps:
+      - checkout
+      - setup_remote_docker:
+          version: 20.10.7
+      - run:
+          name: "Build Docker image for << parameters.service >>"
+          command: |
+            cd << parameters.service >>
+            # Convert service name to lower-case for Docker image naming conventions
+            IMAGE_NAME=$(echo "<< parameters.service >>" | tr '[:upper:]' '[:lower:]')
+            docker build -t myorg/${IMAGE_NAME}:latest .
+
+jobs:
+  build_api_gateway:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - build-docker-image:
+          service: ApiGateway
+
+  build_auth_service:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - build-docker-image:
+          service: AuthService
+
+  build_cart_service:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - build-docker-image:
+          service: CartService
+
+  build_inverntory_service:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - build-docker-image:
+          service: InverntoryService
+
+  build_order_service:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - build-docker-image:
+          service: OrderService
+
+  build_payment_service:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - build-docker-image:
+          service: PaymentService
+
+  build_product_service:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - build-docker-image:
+          service: ProductService
+
+  build_service_registry:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - build-docker-image:
+          service: ServiceRegistry
+
 
 workflows:
   version: 2
@@ -95,6 +169,16 @@ workflows:
       - build_auth_service
       - build_cart_service
       - build_inventory_service
+      - build_order_service
+      - build_payment_service
+      - build_product_service
+      - build_service_registry
+  build_all_docker_images:
+    jobs:
+      - build_api_gateway
+      - build_auth_service
+      - build_cart_service
+      - build_inverntory_service
       - build_order_service
       - build_payment_service
       - build_product_service
