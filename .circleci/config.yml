@@ -47,7 +47,7 @@ commands:
           command: |
             cd << parameters.service_name >>
             IMAGE_NAME=$(echo "<< parameters.service_name >>" | tr '[:upper:]' '[:lower:]')
-            docker build -t ashishgzpy/${IMAGE_NAME}:${CIRCLE_SHA1} -t myorg/${IMAGE_NAME}:latest .
+            docker build -t ashishgzpy/${IMAGE_NAME}:${CIRCLE_SHA1} -t ashishgzpy/${IMAGE_NAME}:latest .
             echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
             docker push ashishgzpy/${IMAGE_NAME}:${CIRCLE_SHA1}
             docker push ashishgzpy/${IMAGE_NAME}:latest
