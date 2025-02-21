@@ -1,184 +1,240 @@
 version: 2.1
 
-# Define a reusable command to compile a microservice
-commands:
-  compile-service:
-    parameters:
-      service: 
-        type: string
-    steps:
-      - checkout
-      - restore_cache:
-          keys:
-            - maven-{{ checksum "pom.xml" }}-<< parameters.service >>
-            - maven-<< parameters.service >>-
-      - run:
-          name: "Compile << parameters.service >>"
-          command: |
-            cd << parameters.service >>
-            mvn clean compile
-      - save_cache:
-          paths:
-            - ~/.m2
-          key: maven-{{ checksum "pom.xml" }}-<< parameters.service >>
-
 jobs:
   build_api_gateway:
     docker:
       - image: cimg/openjdk:17.0
     working_directory: ~/repo
     steps:
-      - compile-service:
-          service: ApiGateway
+      - checkout
+      # Restore Maven cache for ApiGateway (optional)
+      - restore_cache:
+          keys:
+            - maven-{{ checksum "pom.xml" }}-ApiGateway
+            - maven-ApiGateway-
+      - run:
+          name: "Compile ApiGateway"
+          command: |
+            cd ApiGateway
+            mvn clean compile
+      - save_cache:
+          paths:
+            - ~/.m2
+          key: maven-{{ checksum "pom.xml" }}-ApiGateway
+      # Setup remote Docker to build the image
+      - setup_remote_docker:
+          version: 20.10.7
+      - run:
+          name: "Build Docker image for ApiGateway"
+          command: |
+            cd ApiGateway
+            IMAGE_NAME=$(echo "ApiGateway" | tr '[:upper:]' '[:lower:]')
+            docker build -t myorg/${IMAGE_NAME}:latest .
 
   build_auth_service:
     docker:
       - image: cimg/openjdk:17.0
     working_directory: ~/repo
     steps:
-      - compile-service:
-          service: AuthService
+      - checkout
+      - restore_cache:
+          keys:
+            - maven-{{ checksum "pom.xml" }}-AuthService
+            - maven-AuthService-
+      - run:
+          name: "Compile AuthService"
+          command: |
+            cd AuthService
+            mvn clean compile
+      - save_cache:
+          paths:
+            - ~/.m2
+          key: maven-{{ checksum "pom.xml" }}-AuthService
+      - setup_remote_docker:
+          version: 20.10.7
+      - run:
+          name: "Build Docker image for AuthService"
+          command: |
+            cd AuthService
+            IMAGE_NAME=$(echo "AuthService" | tr '[:upper:]' '[:lower:]')
+            docker build -t myorg/${IMAGE_NAME}:latest .
 
   build_cart_service:
     docker:
       - image: cimg/openjdk:17.0
     working_directory: ~/repo
     steps:
-      - compile-service:
-          service: CartService
+      - checkout
+      - restore_cache:
+          keys:
+            - maven-{{ checksum "pom.xml" }}-CartService
+            - maven-CartService-
+      - run:
+          name: "Compile CartService"
+          command: |
+            cd CartService
+            mvn clean compile
+      - save_cache:
+          paths:
+            - ~/.m2
+          key: maven-{{ checksum "pom.xml" }}-CartService
+      - setup_remote_docker:
+          version: 20.10.7
+      - run:
+          name: "Build Docker image for CartService"
+          command: |
+            cd CartService
+            IMAGE_NAME=$(echo "CartService" | tr '[:upper:]' '[:lower:]')
+            docker build -t myorg/${IMAGE_NAME}:latest .
 
   build_inventory_service:
     docker:
       - image: cimg/openjdk:17.0
     working_directory: ~/repo
     steps:
-      - compile-service:
-          service: InventoryService
-
-  build_order_service:
-    docker:
-      - image: cimg/openjdk:17.0
-    working_directory: ~/repo
-    steps:
-      - compile-service:
-          service: OrderService
-
-  build_payment_service:
-    docker:
-      - image: cimg/openjdk:17.0
-    working_directory: ~/repo
-    steps:
-      - compile-service:
-          service: PaymentService
-
-  build_product_service:
-    docker:
-      - image: cimg/openjdk:17.0
-    working_directory: ~/repo
-    steps:
-      - compile-service:
-          service: ProductService
-
-  build_service_registry:
-    docker:
-      - image: cimg/openjdk:17.0
-    working_directory: ~/repo
-    steps:
-      - compile-service:
-          service: ServiceRegistry
-commands:
-  build-docker-image:
-    parameters:
-      service:
-        type: string
-    steps:
       - checkout
+      - restore_cache:
+          keys:
+            - maven-{{ checksum "pom.xml" }}-InventoryService
+            - maven-InventoryService-
+      - run:
+          name: "Compile InventoryService"
+          command: |
+            cd InventoryService
+            mvn clean compile
+      - save_cache:
+          paths:
+            - ~/.m2
+          key: maven-{{ checksum "pom.xml" }}-InventoryService
       - setup_remote_docker:
           version: 20.10.7
       - run:
-          name: "Build Docker image for << parameters.service >>"
+          name: "Build Docker image for InventoryService"
           command: |
-            cd << parameters.service >>
-            # Convert service name to lower-case for Docker image naming conventions
-            IMAGE_NAME=$(echo "<< parameters.service >>" | tr '[:upper:]' '[:lower:]')
+            cd InventoryService
+            IMAGE_NAME=$(echo "InventoryService" | tr '[:upper:]' '[:lower:]')
             docker build -t myorg/${IMAGE_NAME}:latest .
-
-jobs:
-  build_api_gateway:
-    docker:
-      - image: cimg/base:stable
-    steps:
-      - build-docker-image:
-          service: ApiGateway
-
-  build_auth_service:
-    docker:
-      - image: cimg/base:stable
-    steps:
-      - build-docker-image:
-          service: AuthService
-
-  build_cart_service:
-    docker:
-      - image: cimg/base:stable
-    steps:
-      - build-docker-image:
-          service: CartService
-
-  build_inverntory_service:
-    docker:
-      - image: cimg/base:stable
-    steps:
-      - build-docker-image:
-          service: InverntoryService
 
   build_order_service:
     docker:
-      - image: cimg/base:stable
+      - image: cimg/openjdk:17.0
+    working_directory: ~/repo
     steps:
-      - build-docker-image:
-          service: OrderService
+      - checkout
+      - restore_cache:
+          keys:
+            - maven-{{ checksum "pom.xml" }}-OrderService
+            - maven-OrderService-
+      - run:
+          name: "Compile OrderService"
+          command: |
+            cd OrderService
+            mvn clean compile
+      - save_cache:
+          paths:
+            - ~/.m2
+          key: maven-{{ checksum "pom.xml" }}-OrderService
+      - setup_remote_docker:
+          version: 20.10.7
+      - run:
+          name: "Build Docker image for OrderService"
+          command: |
+            cd OrderService
+            IMAGE_NAME=$(echo "OrderService" | tr '[:upper:]' '[:lower:]')
+            docker build -t myorg/${IMAGE_NAME}:latest .
 
   build_payment_service:
     docker:
-      - image: cimg/base:stable
+      - image: cimg/openjdk:17.0
+    working_directory: ~/repo
     steps:
-      - build-docker-image:
-          service: PaymentService
+      - checkout
+      - restore_cache:
+          keys:
+            - maven-{{ checksum "pom.xml" }}-PaymentService
+            - maven-PaymentService-
+      - run:
+          name: "Compile PaymentService"
+          command: |
+            cd PaymentService
+            mvn clean compile
+      - save_cache:
+          paths:
+            - ~/.m2
+          key: maven-{{ checksum "pom.xml" }}-PaymentService
+      - setup_remote_docker:
+          version: 20.10.7
+      - run:
+          name: "Build Docker image for PaymentService"
+          command: |
+            cd PaymentService
+            IMAGE_NAME=$(echo "PaymentService" | tr '[:upper:]' '[:lower:]')
+            docker build -t myorg/${IMAGE_NAME}:latest .
 
   build_product_service:
     docker:
-      - image: cimg/base:stable
+      - image: cimg/openjdk:17.0
+    working_directory: ~/repo
     steps:
-      - build-docker-image:
-          service: ProductService
+      - checkout
+      - restore_cache:
+          keys:
+            - maven-{{ checksum "pom.xml" }}-ProductService
+            - maven-ProductService-
+      - run:
+          name: "Compile ProductService"
+          command: |
+            cd ProductService
+            mvn clean compile
+      - save_cache:
+          paths:
+            - ~/.m2
+          key: maven-{{ checksum "pom.xml" }}-ProductService
+      - setup_remote_docker:
+          version: 20.10.7
+      - run:
+          name: "Build Docker image for ProductService"
+          command: |
+            cd ProductService
+            IMAGE_NAME=$(echo "ProductService" | tr '[:upper:]' '[:lower:]')
+            docker build -t myorg/${IMAGE_NAME}:latest .
 
   build_service_registry:
     docker:
-      - image: cimg/base:stable
+      - image: cimg/openjdk:17.0
+    working_directory: ~/repo
     steps:
-      - build-docker-image:
-          service: ServiceRegistry
-
+      - checkout
+      - restore_cache:
+          keys:
+            - maven-{{ checksum "pom.xml" }}-ServiceRegistry
+            - maven-ServiceRegistry-
+      - run:
+          name: "Compile ServiceRegistry"
+          command: |
+            cd ServiceRegistry
+            mvn clean compile
+      - save_cache:
+          paths:
+            - ~/.m2
+          key: maven-{{ checksum "pom.xml" }}-ServiceRegistry
+      - setup_remote_docker:
+          version: 20.10.7
+      - run:
+          name: "Build Docker image for ServiceRegistry"
+          command: |
+            cd ServiceRegistry
+            IMAGE_NAME=$(echo "ServiceRegistry" | tr '[:upper:]' '[:lower:]')
+            docker build -t myorg/${IMAGE_NAME}:latest .
 
 workflows:
   version: 2
-  build_all_services:
+  build_pipeline:
     jobs:
       - build_api_gateway
       - build_auth_service
       - build_cart_service
       - build_inventory_service
-      - build_order_service
-      - build_payment_service
-      - build_product_service
-      - build_service_registry
-  build_all_docker_images:
-    jobs:
-      - build_api_gateway
-      - build_auth_service
-      - build_cart_service
-      - build_inverntory_service
       - build_order_service
       - build_payment_service
       - build_product_service
