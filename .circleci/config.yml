@@ -3,7 +3,7 @@ version: 2.1
 jobs:
   build:
     docker:
-      - image: cimg/openjdk:11.0  # Use an image with Java and Maven pre-installed
+      - image: cimg/openjdk:17.0  # Use an image with Java and Maven pre-installed
     working_directory: ~/repo
     steps:
       - checkout
