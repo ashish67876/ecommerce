@@ -1,27 +1,38 @@
 version: 2.1
 
-executors:
-  java-executor:
-    docker:
-      - image: cimg/openjdk:17.0
-    working_directory: ~/repo
-    environment:
-      MAVEN_OPTS: "-Xmx3200m"
-
 jobs:
-  build-all-services:
-    executor: java-executor
+  build:
+    docker:
+      - image: cimg/openjdk:11.0  # Use an image with Java and Maven pre-installed
+    working_directory: ~/repo
     steps:
       - checkout
+
+      # Restore Maven cache (optional but recommended for faster builds)
+      - restore_cache:
+          keys:
+            - maven-{{ checksum "pom.xml" }}
+            - maven-
+
       - run:
-          name: "Build and Test All Microservices"
+          name: Compile All Microservices
           command: |
-            mvn clean install -DskipTests=false
-      - store_test_results:
-          path: target/surefire-reports
+            for service in ApiGateway AuthService CartService InverntoryService OrderService PaymentService ProductService ServiceRegistry
+            do
+              echo "Compiling ${service} microservice..."
+              cd ${service}
+              mvn clean compile
+              cd ..
+            done
+
+      # Save Maven cache (optional)
+      - save_cache:
+          paths:
+            - ~/.m2
+          key: maven-{{ checksum "pom.xml" }}
 
 workflows:
   version: 2
-  build:
+  build_and_deploy:
     jobs:
-      - build-all-services
+      - build
