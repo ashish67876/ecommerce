@@ -1,61 +1,27 @@
 version: 2.1
 
-# Define reusable executors
 executors:
   java-executor:
     docker:
       - image: cimg/openjdk:17.0
-    resource_class: medium
+    working_directory: ~/repo
     environment:
-      JVM_OPTS: "-Xmx3200m"
-      TERM: dumb
-
-# Define reusable commands
-commands:
-  setup:
-    steps:
-      - checkout
-      - restore_cache:
-          keys:
-            - maven-dependencies-{{ checksum "pom.xml" }}-{{ epoch }}
-            - maven-dependencies-
-      - run:
-          name: Install Dependencies
-          command: mvn -f pom.xml dependency:resolve
-      - save_cache:
-          paths:
-            - ~/.m2
-          key: maven-dependencies-{{ checksum "pom.xml" }}-{{ epoch }}
-
-# Define microservices list
-parameters:
-  microservices:
-    type: string
-    default: "ApiGateway AuthService CartService InventoryService OrderService PaymentService ProductService ServiceRegistry"
+      MAVEN_OPTS: "-Xmx3200m"
 
 jobs:
-  build-and-test:
+  build-all-services:
     executor: java-executor
     steps:
-      - setup
+      - checkout
       - run:
-          name: Build All Microservices
-          command: mvn -f pom.xml clean package -DskipTests
-      - run:
-          name: Run Tests for All Microservices
-          command: mvn -f pom.xml test
+          name: "Build and Test All Microservices"
+          command: |
+            mvn clean install -DskipTests=false
       - store_test_results:
-          path: "**/target/surefire-reports"
-      - store_artifacts:
-          path: "**/target/*.jar"
-          destination: microservices-jars
+          path: target/surefire-reports
+
 workflows:
   version: 2
-  build-test-deploy:
+  build:
     jobs:
-      - build-and-test:
-          filters:
-            branches:
-              only:
-                - main
-                - develop
+      - build-all-services
