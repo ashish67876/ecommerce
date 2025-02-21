@@ -25,7 +25,7 @@ commands:
 jobs:
   build_api_gateway:
     docker:
-      - image: cimg/openjdk:11.0
+      - image: cimg/openjdk:17.0
     working_directory: ~/repo
     steps:
       - compile-service:
