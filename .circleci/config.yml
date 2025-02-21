@@ -1,38 +1,101 @@
 version: 2.1
 
-jobs:
-  build:
-    docker:
-      - image: cimg/openjdk:17.0  # Use an image with Java and Maven pre-installed
-    working_directory: ~/repo
+# Define a reusable command to compile a microservice
+commands:
+  compile-service:
+    parameters:
+      service: 
+        type: string
     steps:
       - checkout
-
-      # Restore Maven cache (optional but recommended for faster builds)
       - restore_cache:
           keys:
-            - maven-{{ checksum "pom.xml" }}
-            - maven-
-
+            - maven-{{ checksum "pom.xml" }}-<< parameters.service >>
+            - maven-<< parameters.service >>-
       - run:
-          name: Compile All Microservices
+          name: "Compile << parameters.service >>"
           command: |
-            for service in ApiGateway AuthService CartService InverntoryService OrderService PaymentService ProductService ServiceRegistry
-            do
-              echo "Compiling ${service} microservice..."
-              cd ${service}
-              mvn clean compile
-              cd ..
-            done
-
-      # Save Maven cache (optional)
+            cd << parameters.service >>
+            mvn clean compile
       - save_cache:
           paths:
             - ~/.m2
-          key: maven-{{ checksum "pom.xml" }}
+          key: maven-{{ checksum "pom.xml" }}-<< parameters.service >>
+
+jobs:
+  build_api_gateway:
+    docker:
+      - image: cimg/openjdk:11.0
+    working_directory: ~/repo
+    steps:
+      - compile-service:
+          service: ApiGateway
+
+  build_auth_service:
+    docker:
+      - image: cimg/openjdk:11.0
+    working_directory: ~/repo
+    steps:
+      - compile-service:
+          service: AuthService
+
+  build_cart_service:
+    docker:
+      - image: cimg/openjdk:11.0
+    working_directory: ~/repo
+    steps:
+      - compile-service:
+          service: CartService
+
+  build_inventory_service:
+    docker:
+      - image: cimg/openjdk:11.0
+    working_directory: ~/repo
+    steps:
+      - compile-service:
+          service: InventoryService
+
+  build_order_service:
+    docker:
+      - image: cimg/openjdk:11.0
+    working_directory: ~/repo
+    steps:
+      - compile-service:
+          service: OrderService
+
+  build_payment_service:
+    docker:
+      - image: cimg/openjdk:11.0
+    working_directory: ~/repo
+    steps:
+      - compile-service:
+          service: PaymentService
+
+  build_product_service:
+    docker:
+      - image: cimg/openjdk:11.0
+    working_directory: ~/repo
+    steps:
+      - compile-service:
+          service: ProductService
+
+  build_service_registry:
+    docker:
+      - image: cimg/openjdk:11.0
+    working_directory: ~/repo
+    steps:
+      - compile-service:
+          service: ServiceRegistry
 
 workflows:
   version: 2
-  build_and_deploy:
+  build_all_services:
     jobs:
-      - build
+      - build_api_gateway
+      - build_auth_service
+      - build_cart_service
+      - build_inventory_service
+      - build_order_service
+      - build_payment_service
+      - build_product_service
+      - build_service_registry
