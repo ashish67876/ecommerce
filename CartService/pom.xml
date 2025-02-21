@@ -91,6 +91,7 @@
                 </configuration>
             </plugin>
         </plugins>
+        <finalName>vendor-voyage-cart-service</finalName>     
     </build>
 
 </project>
