@@ -1,5 +1,6 @@
 version: 2.1
 
+# Define reusable executors
 executors:
   java-executor:
     docker:
@@ -9,31 +10,28 @@ executors:
       JVM_OPTS: "-Xmx3200m"
       TERM: dumb
 
+# Define reusable commands
 commands:
   setup:
     steps:
       - checkout
-      - run:
-          name: Find pom.xml directory
-          command: |
-            POM_PATH=$(find . -name pom.xml | head -1)
-            if [ -z "$POM_PATH" ]; then
-              echo "No pom.xml found!"
-              exit 1
-            fi
-            DIR_PATH=$(dirname "$POM_PATH")
-            cd "$DIR_PATH"
       - restore_cache:
           keys:
-            - maven-dependencies-{{ checksum "pom.xml" }}
+            - maven-dependencies-{{ checksum "pom.xml" }}-{{ epoch }}
             - maven-dependencies-
       - run:
           name: Install Dependencies
-          command: mvn dependency:resolve
+          command: mvn -f pom.xml dependency:resolve
       - save_cache:
           paths:
             - ~/.m2
-          key: maven-dependencies-{{ checksum "pom.xml" }}
+          key: maven-dependencies-{{ checksum "pom.xml" }}-{{ epoch }}
+
+# Define microservices list
+parameters:
+  microservices:
+    type: string
+    default: "ApiGateway AuthService CartService InventoryService OrderService PaymentService ProductService ServiceRegistry"
 
 jobs:
   build-and-test:
@@ -41,19 +39,61 @@ jobs:
     steps:
       - setup
       - run:
-          name: Build Application
-          command: mvn clean package -DskipTests
+          name: Build All Microservices
+          command: mvn -f pom.xml clean package -DskipTests
       - run:
-          name: Run Tests
-          command: mvn test
+          name: Run Tests for All Microservices
+          command: mvn -f pom.xml test
       - store_test_results:
-          path: target/surefire-reports
+          path: "**/target/surefire-reports"
       - store_artifacts:
-          path: target/ecommerce-0.0.1-SNAPSHOT.jar
-          destination: ecommerce.jar
+          path: "**/target/*.jar"
+          destination: microservices-jars
+
+  build-and-push-docker:
+    executor: java-executor
+    parameters:
+      microservice:
+        type: string
+    steps:
+      - checkout
+      - setup_remote_docker:
+          version: 20.10.14
+      - run:
+          name: Build << parameters.microservice >>
+          command: |
+            cd << parameters.microservice >>
+            mvn clean package -DskipTests
+      - run:
+          name: Build and Push Docker Image for << parameters.microservice >>
+          command: |
+            cd << parameters.microservice >>
+            docker build -t ashish67876/ecommerce-<< parameters.microservice | tr '[:upper:]' '[:lower:]' >>:${CIRCLE_SHA1} .
+            docker tag ashish67876/ecommerce-<< parameters.microservice | tr '[:upper:]' '[:lower:]' >>:${CIRCLE_SHA1} ashish67876/ecommerce-<< parameters.microservice | tr '[:upper:]' '[:lower:]' >>:latest
+            echo "$DOCKERHUB_PASS" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+            docker push ashish67876/ecommerce-<< parameters.microservice | tr '[:upper:]' '[:lower:]' >>:${CIRCLE_SHA1}
+            docker push ashish67876/ecommerce-<< parameters.microservice | tr '[:upper:]' '[:lower:]' >>:latest
+
+  deploy-to-production:
+    executor: java-executor
+    parameters:
+      microservice:
+        type: string
+    steps:
+      - run:
+          name: Deploy << parameters.microservice >> to AWS ECS
+          command: |
+            curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+            unzip awscliv2.zip
+            sudo ./aws/install --update
+            aws configure set aws_access_key_id "$AWS_ACCESS_KEY_ID"
+            aws configure set aws_secret_access_key "$AWS_SECRET_ACCESS_KEY"
+            aws configure set region "$AWS_REGION"
+            aws ecs update-service --cluster ecommerce-cluster --service << parameters.microservice | tr '[:upper:]' '[:lower:]' >>-service --force-new-deployment
+
 workflows:
   version: 2
-  build-test deploy:
+  build-test-deploy:
     jobs:
       - build-and-test:
           filters:
@@ -61,3 +101,25 @@ workflows:
               only:
                 - main
                 - develop
+      - build-and-push-docker:
+          name: build-and-push-<< matrix.microservice >>
+          matrix:
+            parameters:
+              microservice: [ApiGateway, AuthService, CartService, InventoryService, OrderService, PaymentService, ProductService, ServiceRegistry]
+          requires:
+            - build-and-test
+          filters:
+            branches:
+              only:
+                - main
+      - deploy-to-production:
+          name: deploy-<< matrix.microservice >>
+          matrix:
+            parameters:
+              microservice: [ApiGateway, AuthService, CartService, InventoryService, OrderService, PaymentService, ProductService, ServiceRegistry]
+          requires:
+            - build-and-push-<< matrix.microservice >>
+          filters:
+            branches:
+              only:
+                - main
