@@ -47,10 +47,10 @@ commands:
           command: |
             cd << parameters.service_name >>
             IMAGE_NAME=$(echo "<< parameters.service_name >>" | tr '[:upper:]' '[:lower:]')
-            docker build -t myorg/${IMAGE_NAME}:${CIRCLE_SHA1} -t myorg/${IMAGE_NAME}:latest .
+            docker build -t ashish233001/${IMAGE_NAME}:${CIRCLE_SHA1} -t myorg/${IMAGE_NAME}:latest .
             echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
-            docker push myorg/${IMAGE_NAME}:${CIRCLE_SHA1}
-            docker push myorg/${IMAGE_NAME}:latest
+            docker push ashish233001/${IMAGE_NAME}:${CIRCLE_SHA1}
+            docker push ashish233001/${IMAGE_NAME}:latest
 
 # Define jobs
 jobs:
