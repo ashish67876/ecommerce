@@ -41,7 +41,7 @@ commands:
         type: string
     steps:
       - setup_remote_docker:
-          version: 20.10.7  # Stable version for production
+          version: default  # Stable version for production
       - run:
           name: "Build and Push Docker Image for << parameters.service_name >>"
           command: |
