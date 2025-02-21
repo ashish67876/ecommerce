@@ -33,7 +33,7 @@ jobs:
 
   build_auth_service:
     docker:
-      - image: cimg/openjdk:11.0
+      - image: cimg/openjdk:17.0
     working_directory: ~/repo
     steps:
       - compile-service:
@@ -41,7 +41,7 @@ jobs:
 
   build_cart_service:
     docker:
-      - image: cimg/openjdk:11.0
+      - image: cimg/openjdk:17.0
     working_directory: ~/repo
     steps:
       - compile-service:
@@ -49,7 +49,7 @@ jobs:
 
   build_inventory_service:
     docker:
-      - image: cimg/openjdk:11.0
+      - image: cimg/openjdk:17.0
     working_directory: ~/repo
     steps:
       - compile-service:
@@ -57,7 +57,7 @@ jobs:
 
   build_order_service:
     docker:
-      - image: cimg/openjdk:11.0
+      - image: cimg/openjdk:17.0
     working_directory: ~/repo
     steps:
       - compile-service:
@@ -65,7 +65,7 @@ jobs:
 
   build_payment_service:
     docker:
-      - image: cimg/openjdk:11.0
+      - image: cimg/openjdk:17.0
     working_directory: ~/repo
     steps:
       - compile-service:
@@ -73,7 +73,7 @@ jobs:
 
   build_product_service:
     docker:
-      - image: cimg/openjdk:11.0
+      - image: cimg/openjdk:17.0
     working_directory: ~/repo
     steps:
       - compile-service:
@@ -81,7 +81,7 @@ jobs:
 
   build_service_registry:
     docker:
-      - image: cimg/openjdk:11.0
+      - image: cimg/openjdk:17.0
     working_directory: ~/repo
     steps:
       - compile-service:
