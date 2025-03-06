@@ -38,6 +38,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: build-artifact
     steps:
+      - name: List Target Directory
+        run: ls -la target/
+        
       - name: Download JAR artifact
         uses: actions/download-artifact@v4
         with:
