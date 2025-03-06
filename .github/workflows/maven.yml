@@ -15,7 +15,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: ashish67876/ecommerce
-          token: ${{ secrets.GITHUB_TOKEN }}  # Replace *** with a proper token reference
+          token: ${{ secrets.TOKEN }}  # Replace *** with a proper token reference
           ssh-strict: true
           ssh-user: git
           persist-credentials: true
