@@ -13,10 +13,25 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          repository: ashish67876/ecommerce
+          token: ${{ secrets.GITHUB_TOKEN }}  # Replace *** with a proper token reference
+          ssh-strict: true
+          ssh-user: git
+          persist-credentials: true
+          clean: true
+          sparse-checkout-cone-mode: true
+          fetch-depth : 1
+          fetch-tags: false
+          show-progress: true
+          lfs: false
+          submodules: false
+          set-safe-directory: true
       - name: Install GLIBC
         run: |
           sudo apt-get update
           sudo apt-get install -y libc6=2.27-3ubuntu1.5  # Specific GLIBC version
+       
 
       - name: Cache Maven dependencies
         uses: actions/cache@v4
