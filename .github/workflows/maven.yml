@@ -27,12 +27,16 @@ jobs:
         run: |
           chmod +x build-maven.sh
           ./build-maven.sh
+      - name: artifacts make and update in artifact dir
+        run: |
+          chmod +x artifacts.sh
+          ./artifacts.sh
 
       - name: Upload JAR artifact
         uses: actions/upload-artifact@v4
         with:
           name: jar-artifact
-          path: target/*.jar
+          path: artifacts/*.jar
 
   upload-to-jfrog:
     runs-on: ubuntu-latest
