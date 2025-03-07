@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - 'ProductService/**'
+      - '.github/workflows/product-service-ci.yml'
 
 jobs:
   build-artifact:
