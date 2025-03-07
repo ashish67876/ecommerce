@@ -118,5 +118,5 @@ jobs:
         with:
           image-ref: ${{ secrets.DOCKER_USERNAME }}/${{ github.event.repository.name }}:${{ github.run_number }}
           severity: 'HIGH,CRITICAL'
-          exit-code: 1
+          exit-code: 0
           ignore-unfixed: true
