@@ -87,7 +87,7 @@ jobs:
           failures=0
           find . -name "Dockerfile" -exec sh -c '
             dir=$(dirname "{}")
-            image_name="ashish233001/microservices_$(basename $dir):'"$BUILD_NUMBER"'"
+            image_name="ashish233001/$(basename $dir):'"$BUILD_NUMBER"'"
             echo "Building Image: $image_name from directory: $dir"
             if docker build -t $image_name $dir; then
               echo "Pushing Image: $image_name"
