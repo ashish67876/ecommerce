@@ -88,11 +88,11 @@ jobs:
           find . -name "Dockerfile" -exec sh -c '
             dir=$(dirname "{}")
             repo_name=$(basename $dir | tr '[:upper:]' '[:lower:]')
-            image_name="ashish233001/microservices_${repo_name}:${BUILD_NUMBER}"
-            echo "Building Image: $image_name from directory: $dir"
-            if docker build -t $image_name $dir; then
-              echo "Pushing Image: $image_name"
-              docker push $image_name
+            IMAGE_NAME=${{ secrets.DOCKER_USERNAME }}/${{ github.event.repository.name }}:${{ github.run_number }}
+            echo "Building Image: $IMAGE_NAME from directory: $dir"
+            if docker build -t $IMAGE_NAME $dir; then
+              echo "Pushing Image: $IMAGE_NAME"
+              docker push $IMAGE_NAME
             else
               echo "Failed to build: $image_name"
               failures=$((failures+1))
@@ -106,12 +106,12 @@ jobs:
             echo "All Docker images built and pushed successfully!"
           fi
 
-      - name: Build and Push Docker Image
-        run: |
-          IMAGE_NAME=${{ secrets.DOCKER_USERNAME }}/${{ github.event.repository.name }}:${{ github.run_number }}
-          echo "Building image for $IMAGE_NAME"
-          docker build -t $IMAGE_NAME --build-arg JAR_FILE=target/*.jar .
-          docker push $IMAGE_NAME
+      #- name: Build and Push Docker Image
+      #  run: |
+      #    IMAGE_NAME=${{ secrets.DOCKER_USERNAME }}/${{ github.event.repository.name }}:${{ github.run_number }}
+      #    echo "Building image for $IMAGE_NAME"
+      #    docker build -t $IMAGE_NAME --build-arg JAR_FILE=target/*.jar .
+      #    docker push $IMAGE_NAME
 
       - name: Scan with Trivy
         uses: aquasecurity/trivy-action@master
