@@ -1,122 +1,41 @@
-name: CI Workflow
+name: Base CI Workflow
 
 on:
-  push:
+  pull_request:
     branches:
       - main
+      - dev
 
 jobs:
-  build-artifact:
+  git-secrets-check:
+    name: Git Secrets Check 🔑
     runs-on: ubuntu-latest
-    container:
-      image: maven:3.8.5-openjdk-17
 
     steps:
-      - name: Checkout code
+      - name: Checkout Code
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
-      - name: Cache Maven dependencies
-        uses: actions/cache@v4
-        with:
-          path: ~/.m2/repository
-          key: maven-${{ hashFiles('**/pom.xml') }}
-
-      - name: Build with Maven
+      - name: Install Git Secrets
         run: |
-          chmod +x build-maven.sh
-          ./build-maven.sh
-      - name: artifacts make and update in artifact dir
-        run: |
-          chmod +x artifacts.sh
-          ./artifacts.sh
+          sudo apt-get update
+          sudo apt-get install git
+          git clone https://github.com/ashish67876/ecommerce.git
+          cd git-secrets && sudo make install
+          git secrets --install
+          git secrets --scan
 
-      - name: Upload JAR artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: jar-artifact
-          path: artifacts/*.jar
-
-  upload-to-jfrog:
+  sonar-scan:
+    name: SonarQube Code Quality
     runs-on: ubuntu-latest
-    needs: build-artifact
-    steps:  
-      - name: Download JAR artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: jar-artifact
-          path: target/
 
-      - name: Install JFrog CLI
-        run: |
-          curl -fL https://install-cli.jfrog.io | sh
-          echo "$HOME/.jfrog/bin" >> $GITHUB_PATH
-
-      - name: Configure JFrog CLI
-        run: |
-          jf c add myplatform --url ${{ secrets.JFROG_URL }} --access-token ${{ secrets.JFROG_ACCESS_TOKEN }} --interactive=false
-          jf c use myplatform
-
-      - name: Upload JAR to JFrog
-        run: jf rt upload "target/*.jar" linkinpark-libs-release/
-
-  build-push-scan-docker:
-    runs-on: ubuntu-latest
-    needs: upload-to-jfrog
     steps:
-      - name: Checkout code
+      - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Download JAR artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: jar-artifact
-          path: target/
+      - name: SonarQube Scan
+        uses: sonarsource/sonarqube-scan-action@master
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
 
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-          
-      - name: Search Dockerfiles and Build Images
-        run: |
-          BUILD_NUMBER=${{ github.run_number }}
-          echo "Build Number: $BUILD_NUMBER"
-          failures=0
-          find . -name "Dockerfile" -exec sh -c '
-            dir=$(dirname "{}")
-            repo_name=$(basename $dir | tr '[:upper:]' '[:lower:]')
-            IMAGE_NAME=${{ secrets.DOCKER_USERNAME }}/${{ github.event.repository.name }}:${{ github.run_number }}
-            echo "Building Image: $IMAGE_NAME from directory: $dir"
-            if docker build -t $IMAGE_NAME $dir; then
-              echo "Pushing Image: $IMAGE_NAME"
-              docker push $IMAGE_NAME
-            else
-              echo "Failed to build: $image_name"
-              failures=$((failures+1))
-            fi
-          ' \;
-
-          if [ $failures -gt 0 ]; then
-            echo "$failures builds failed!"
-            exit 1
-          else
-            echo "All Docker images built and pushed successfully!"
-          fi
-
-      #- name: Build and Push Docker Image
-      #  run: |
-      #    IMAGE_NAME=${{ secrets.DOCKER_USERNAME }}/${{ github.event.repository.name }}:${{ github.run_number }}
-      #    echo "Building image for $IMAGE_NAME"
-      #    docker build -t $IMAGE_NAME --build-arg JAR_FILE=target/*.jar .
-      #    docker push $IMAGE_NAME
-
-      - name: Scan with Trivy
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: ${{ secrets.DOCKER_USERNAME }}/${{ github.event.repository.name }}:${{ github.run_number }}
-          severity: 'HIGH,CRITICAL'
-          exit-code: 0
-          ignore-unfixed: true
+  
